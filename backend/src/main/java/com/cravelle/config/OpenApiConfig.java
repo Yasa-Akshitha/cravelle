@@ -19,9 +19,9 @@ public class OpenApiConfig {
 
         return new OpenAPI()
                 .info(new Info()
-                        .title("Cravelle Luxury Fashion E-Commerce API")
+                        .title("Cravelle AI-Powered Food Discovery & Delivery Platform API")
                         .version("1.0.0")
-                        .description("REST API documentation for Cravelle fashion boutique, shopping cart, orders, and Cravelle AI shopping assistant.")
+                        .description("REST API documentation for Cravelle food discovery, location-based recommendations, restaurant menus, orders, live delivery tracking, and Cravelle AI concierge.")
                         .contact(new Contact().name("Cravelle Engineering").email("support@cravelle.com"))
                         .license(new License().name("Proprietary").url("https://cravelle.com")))
                 .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))

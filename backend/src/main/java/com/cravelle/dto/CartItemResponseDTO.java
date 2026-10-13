@@ -1,60 +1,73 @@
 package com.cravelle.dto;
 
+import com.cravelle.entity.CartItem;
 import java.math.BigDecimal;
 
 public class CartItemResponseDTO {
-
     private Long id;
-    private Long productVariantId;
-    private Long productId;
-    private String productName;
-    private String productSlug;
-    private String productImageUrl;
-    private String size;
-    private String color;
-    private BigDecimal unitPrice;
+    private Long dishId;
+    private String dishName;
+    private String imageUrl;
+    private Boolean isVeg;
+    private Long restaurantId;
+    private String restaurantName;
     private Integer quantity;
-    private BigDecimal lineTotal;
-    private Integer availableStock;
+    private BigDecimal unitPrice;
+    private BigDecimal totalPrice;
+    private String specialInstructions;
 
     public CartItemResponseDTO() {}
+
+    public static CartItemResponseDTO fromEntity(CartItem item) {
+        CartItemResponseDTO dto = new CartItemResponseDTO();
+        dto.setId(item.getId());
+        if (item.getDish() != null) {
+            dto.setDishId(item.getDish().getId());
+            dto.setDishName(item.getDish().getName());
+            dto.setImageUrl(item.getDish().getImageUrl());
+            dto.setIsVeg(item.getDish().getIsVeg());
+            if (item.getDish().getRestaurant() != null) {
+                dto.setRestaurantId(item.getDish().getRestaurant().getId());
+                dto.setRestaurantName(item.getDish().getRestaurant().getName());
+            }
+        }
+        dto.setQuantity(item.getQuantity());
+        dto.setUnitPrice(item.getUnitPrice());
+        dto.setTotalPrice(item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+        dto.setSpecialInstructions(item.getSpecialInstructions());
+        return dto;
+    }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public Long getProductVariantId() { return productVariantId; }
-    public void setProductVariantId(Long productVariantId) { this.productVariantId = productVariantId; }
+    public Long getDishId() { return dishId; }
+    public void setDishId(Long dishId) { this.dishId = dishId; }
 
-    public Long getProductId() { return productId; }
-    public void setProductId(Long productId) { this.productId = productId; }
+    public String getDishName() { return dishName; }
+    public void setDishName(String dishName) { this.dishName = dishName; }
 
-    public String getProductName() { return productName; }
-    public void setProductName(String productName) { this.productName = productName; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
 
-    public String getProductSlug() { return productSlug; }
-    public void setProductSlug(String productSlug) { this.productSlug = productSlug; }
+    public Boolean getIsVeg() { return isVeg; }
+    public void setIsVeg(Boolean veg) { isVeg = veg; }
 
-    public String getProductImageUrl() { return imageUrlOrFallback(); }
-    public String getRawProductImageUrl() { return productImageUrl; }
-    public void setProductImageUrl(String productImageUrl) { this.productImageUrl = productImageUrl; }
+    public Long getRestaurantId() { return restaurantId; }
+    public void setRestaurantId(Long restaurantId) { this.restaurantId = restaurantId; }
 
-    private String imageUrlOrFallback() { return productImageUrl; }
-
-    public String getSize() { return size; }
-    public void setSize(String size) { this.size = size; }
-
-    public String getColor() { return color; }
-    public void setColor(String color) { this.color = color; }
-
-    public BigDecimal getUnitPrice() { return unitPrice; }
-    public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
+    public String getRestaurantName() { return restaurantName; }
+    public void setRestaurantName(String restaurantName) { this.restaurantName = restaurantName; }
 
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
 
-    public BigDecimal getLineTotal() { return lineTotal; }
-    public void setLineTotal(BigDecimal lineTotal) { this.lineTotal = lineTotal; }
+    public BigDecimal getUnitPrice() { return unitPrice; }
+    public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
 
-    public Integer getAvailableStock() { return availableStock; }
-    public void setAvailableStock(Integer availableStock) { this.availableStock = availableStock; }
+    public BigDecimal getTotalPrice() { return totalPrice; }
+    public void setTotalPrice(BigDecimal totalPrice) { this.totalPrice = totalPrice; }
+
+    public String getSpecialInstructions() { return specialInstructions; }
+    public void setSpecialInstructions(String specialInstructions) { this.specialInstructions = specialInstructions; }
 }

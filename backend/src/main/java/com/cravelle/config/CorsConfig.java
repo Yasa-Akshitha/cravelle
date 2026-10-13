@@ -30,6 +30,8 @@ public class CorsConfig {
         for (String origin : origins) {
             config.addAllowedOrigin(origin);
         }
+        config.addAllowedOriginPattern("http://localhost:*");
+        config.addAllowedOriginPattern("https://*.vercel.app");
 
         config.setAllowCredentials(true);
         config.setAllowedHeaders(Arrays.asList("Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "Cache-Control"));

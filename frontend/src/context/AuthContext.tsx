@@ -9,8 +9,8 @@ interface AuthContextType {
   isAdmin: boolean;
   loading: boolean;
   login: (email: string, pass: string) => Promise<void>;
-  register: (name: string, email: string, pass: string) => Promise<void>;
-  logout: () => Promise<void>;
+  register: (name: string, email: string, pass: string, phone?: string) => Promise<void>;
+  logout: () => void;
   updateUser: (user: User) => void;
 }
 
@@ -29,7 +29,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (storedToken && storedUser) {
         try {
           setUser(JSON.parse(storedUser));
-          // Optionally verify with server
           const freshUser = await authService.getMe();
           setUser(freshUser);
           localStorage.setItem('cravelle_user', JSON.stringify(freshUser));
@@ -52,6 +51,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       name: res.name,
       email: res.email,
       role: res.role,
+      phone: res.phone,
+      avatarUrl: res.avatarUrl
     };
     localStorage.setItem('cravelle_token', res.token);
     localStorage.setItem('cravelle_user', JSON.stringify(authUser));
@@ -60,22 +61,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = async (email: string, pass: string) => {
-    const res = await authService.login(email, pass);
+    const res = await authService.login({ email, password: pass });
     handleAuthSuccess(res);
   };
 
-  const register = async (name: string, email: string, pass: string) => {
-    const res = await authService.register(name, email, pass);
+  const register = async (name: string, email: string, pass: string, phone?: string) => {
+    const res = await authService.register({ name, email, password: pass, phone });
     handleAuthSuccess(res);
   };
 
-  const logout = async () => {
-    try {
-      await authService.logout();
-    } finally {
-      setUser(null);
-      setToken(null);
-    }
+  const logout = () => {
+    authService.logout();
+    setUser(null);
+    setToken(null);
   };
 
   const updateUser = (updated: User) => {
@@ -87,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     token,
     isAuthenticated: !!user && !!token,
-    isAdmin: user?.role === 'ADMIN',
+    isAdmin: user?.role === 'ROLE_ADMIN' || (user?.role as any) === 'ADMIN',
     loading,
     login,
     register,

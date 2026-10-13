@@ -1,251 +1,209 @@
 package com.cravelle.service;
 
-import com.cravelle.dto.*;
+import com.cravelle.dto.CreateOrderRequest;
+import com.cravelle.dto.OrderResponseDTO;
+import com.cravelle.dto.PageResponse;
 import com.cravelle.entity.*;
 import com.cravelle.exception.BadRequestException;
-import com.cravelle.exception.InsufficientStockException;
 import com.cravelle.exception.ResourceNotFoundException;
-import com.cravelle.payment.PaymentService;
 import com.cravelle.repository.*;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class OrderService {
-
-    private static final BigDecimal FREE_SHIPPING_THRESHOLD = new BigDecimal("3000.00");
-    private static final BigDecimal STANDARD_SHIPPING_FEE = new BigDecimal("150.00");
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
+    private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
-    private final ProductVariantRepository productVariantRepository;
     private final AddressRepository addressRepository;
     private final UserRepository userRepository;
-    private final PaymentService paymentService;
-    private final AddressService addressService;
+    private final DeliveryStatusHistoryRepository deliveryHistoryRepository;
 
-    public OrderService(
-            OrderRepository orderRepository,
-            OrderItemRepository orderItemRepository,
-            CartItemRepository cartItemRepository,
-            ProductVariantRepository productVariantRepository,
-            AddressRepository addressRepository,
-            UserRepository userRepository,
-            PaymentService paymentService,
-            AddressService addressService) {
+    public OrderService(OrderRepository orderRepository,
+                        OrderItemRepository orderItemRepository,
+                        CartRepository cartRepository,
+                        CartItemRepository cartItemRepository,
+                        AddressRepository addressRepository,
+                        UserRepository userRepository,
+                        DeliveryStatusHistoryRepository deliveryHistoryRepository) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
+        this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
-        this.productVariantRepository = productVariantRepository;
         this.addressRepository = addressRepository;
         this.userRepository = userRepository;
-        this.paymentService = paymentService;
-        this.addressService = addressService;
+        this.deliveryHistoryRepository = deliveryHistoryRepository;
     }
 
-    @Transactional
     public OrderResponseDTO createOrder(Long userId, CreateOrderRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
 
-        Address address = addressRepository.findByIdAndUserId(request.getAddressId(), userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Shipping address not found"));
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new BadRequestException("Your bag is empty"));
 
-        List<CartItem> cartItems = cartItemRepository.findByUserId(userId);
-        if (cartItems.isEmpty()) {
-            throw new BadRequestException("Your shopping cart is empty");
+        if (cart.getItems().isEmpty()) {
+            throw new BadRequestException("Your bag is empty. Please add items to checkout.");
         }
 
-        // 1. Verify stock for all items first
+        Address address = addressRepository.findByIdAndUserId(request.getAddressId(), userId)
+                .orElseThrow(() -> new BadRequestException("Delivery address not found or invalid"));
+
+        Dish firstDish = cart.getItems().get(0).getDish();
+        Restaurant restaurant = firstDish.getRestaurant();
+
+        if (restaurant == null || !Boolean.TRUE.equals(restaurant.getIsOpen())) {
+            throw new BadRequestException("The restaurant is currently closed for new orders.");
+        }
+
         BigDecimal subtotal = BigDecimal.ZERO;
-        for (CartItem cartItem : cartItems) {
-            ProductVariant variant = cartItem.getProductVariant();
-            if (variant.getStock() < cartItem.getQuantity()) {
-                throw new InsufficientStockException("Item '" + variant.getProduct().getName() +
-                        "' (" + variant.getSize() + " / " + variant.getColor() +
-                        ") is out of stock. Available: " + variant.getStock());
+        List<OrderItem> orderItems = new ArrayList<>();
+
+        for (CartItem ci : cart.getItems()) {
+            Dish dish = ci.getDish();
+            if (!Boolean.TRUE.equals(dish.getIsAvailable())) {
+                throw new BadRequestException("Item '" + dish.getName() + "' is sold out. Please remove it from cart.");
             }
-            BigDecimal itemTotal = variant.getProduct().getPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity()));
+            BigDecimal itemTotal = dish.getPrice().multiply(BigDecimal.valueOf(ci.getQuantity()));
             subtotal = subtotal.add(itemTotal);
         }
 
-        // 2. Server-side calculation of shipping and total
-        BigDecimal shippingFee = BigDecimal.ZERO;
-        if (subtotal.compareTo(FREE_SHIPPING_THRESHOLD) < 0) {
-            shippingFee = STANDARD_SHIPPING_FEE;
+        BigDecimal deliveryFee = restaurant.getDeliveryFee() != null ? restaurant.getDeliveryFee() : BigDecimal.valueOf(40.00);
+        BigDecimal tax = subtotal.multiply(BigDecimal.valueOf(0.05)).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal total = subtotal.add(deliveryFee).add(tax);
+
+        // Minimum order check
+        if (restaurant.getMinimumOrder() != null && subtotal.compareTo(restaurant.getMinimumOrder()) < 0) {
+            throw new BadRequestException("Minimum order amount for " + restaurant.getName() + " is ₹" + restaurant.getMinimumOrder());
         }
-        BigDecimal total = subtotal.add(shippingFee);
 
-        // 3. Process payment
-        PaymentService.PaymentResult paymentResult = paymentService.processPayment(
-                request.getPaymentMethod(), total);
+        String orderNumber = "CRV-" + LocalDateTime.now().getYear() + "-" + (1000 + (int)(Math.random() * 9000));
 
-        // 4. Create Order
-        Order order = new Order(
-                user,
-                address,
-                subtotal,
-                shippingFee,
-                total,
-                request.getPaymentMethod()
-        );
-        order.setPaymentStatus(paymentResult.status());
-        order.setPaymentId(paymentResult.transactionId());
-        order.setOrderStatus(OrderStatus.PROCESSING);
+        PaymentMethod paymentMethod = PaymentMethod.CASH_ON_DELIVERY;
+        if ("RAZORPAY_TEST".equalsIgnoreCase(request.getPaymentMethod()) || "ONLINE".equalsIgnoreCase(request.getPaymentMethod())) {
+            paymentMethod = PaymentMethod.RAZORPAY_TEST;
+        }
+
+        String fullAddressText = String.format("%s, %s, %s - %s (Phone: %s)",
+                address.getStreet(), address.getArea(), address.getCity(), address.getPincode(), user.getPhone() != null ? user.getPhone() : "N/A");
+
+        Order order = new Order();
+        order.setOrderNumber(orderNumber);
+        order.setUser(user);
+        order.setRestaurant(restaurant);
+        order.setSubtotal(subtotal);
+        order.setDeliveryFee(deliveryFee);
+        order.setTax(tax);
+        order.setTotalAmount(total);
+        order.setStatus(OrderStatus.ORDER_PLACED);
+        order.setPaymentMethod(paymentMethod);
+        order.setPaymentStatus(paymentMethod == PaymentMethod.CASH_ON_DELIVERY ? PaymentStatus.PENDING : PaymentStatus.PAID);
+        order.setDeliveryAddress(fullAddressText);
+        order.setDeliveryInstructions(request.getDeliveryInstructions());
+        order.setRiderName("Vikram Singh (Demo Delivery Partner)");
+        order.setRiderPhone("+91 98765 43210");
 
         Order savedOrder = orderRepository.save(order);
 
-        // 5. Create Order Items & Decrement Inventory
-        List<OrderItem> orderItems = new ArrayList<>();
-        for (CartItem cartItem : cartItems) {
-            ProductVariant variant = cartItem.getProductVariant();
-            Product product = variant.getProduct();
+        // Build price snapshot line items
+        for (CartItem ci : cart.getItems()) {
+            Dish dish = ci.getDish();
+            BigDecimal itemTotal = dish.getPrice().multiply(BigDecimal.valueOf(ci.getQuantity()));
+            OrderItem oi = new OrderItem(savedOrder, dish, dish.getName(), ci.getQuantity(), dish.getPrice(), itemTotal);
+            orderItemRepository.save(oi);
+            savedOrder.getItems().add(oi);
 
-            // Historical snapshot
-            OrderItem orderItem = new OrderItem(
-                    savedOrder,
-                    product,
-                    product.getName(),
-                    product.getPrice(),
-                    cartItem.getQuantity(),
-                    variant.getSize(),
-                    variant.getColor()
-            );
-            orderItems.add(orderItemRepository.save(orderItem));
-
-            // Decrement inventory atomically
-            variant.setStock(variant.getStock() - cartItem.getQuantity());
-            productVariantRepository.save(variant);
+            // Update dish total order counter
+            dish.setTotalOrders((dish.getTotalOrders() != null ? dish.getTotalOrders() : 0) + ci.getQuantity());
         }
 
-        savedOrder.setItems(orderItems);
+        // Add initial status history entry
+        DeliveryStatusHistory history = new DeliveryStatusHistory(
+                savedOrder,
+                OrderStatus.ORDER_PLACED,
+                "Order placed by " + user.getName() + " with payment method " + paymentMethod.name()
+        );
+        deliveryHistoryRepository.save(history);
+        savedOrder.getStatusHistory().add(history);
 
-        // 6. Clear user cart
-        cartItemRepository.deleteByUserId(userId);
+        // Clear cart
+        cart.getItems().clear();
+        cartItemRepository.deleteByCartId(cart.getId());
 
-        return mapToDTO(savedOrder);
+        return OrderResponseDTO.fromEntity(savedOrder);
     }
 
     @Transactional(readOnly = true)
     public List<OrderResponseDTO> getUserOrders(Long userId) {
         return orderRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
-                .map(this::mapToDTO)
+                .map(OrderResponseDTO::fromEntity)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public OrderResponseDTO getOrderById(Long userId, Long orderId) {
-        Order order = orderRepository.findByIdAndUserId(orderId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
-        return mapToDTO(order);
-    }
+    public PageResponse<OrderResponseDTO> getUserOrdersPaged(Long userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Order> orderPage = orderRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
 
-    @Transactional
-    public OrderResponseDTO cancelOrder(Long userId, Long orderId) {
-        Order order = orderRepository.findByIdAndUserId(orderId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
-
-        if (order.getOrderStatus() == OrderStatus.SHIPPED || order.getOrderStatus() == OrderStatus.DELIVERED) {
-            throw new BadRequestException("Orders that have shipped or been delivered cannot be cancelled");
-        }
-
-        if (order.getOrderStatus() == OrderStatus.CANCELLED) {
-            throw new BadRequestException("Order is already cancelled");
-        }
-
-        // Restore stock
-        for (OrderItem item : order.getItems()) {
-            productVariantRepository.findByProductIdAndSizeAndColor(
-                    item.getProduct().getId(), item.getSelectedSize(), item.getSelectedColor()
-            ).ifPresent(variant -> {
-                variant.setStock(variant.getStock() + item.getQuantity());
-                productVariantRepository.save(variant);
-            });
-        }
-
-        order.setOrderStatus(OrderStatus.CANCELLED);
-        if (order.getPaymentStatus() == PaymentStatus.PAID) {
-            order.setPaymentStatus(PaymentStatus.REFUNDED);
-        }
-        Order updated = orderRepository.save(order);
-
-        return mapToDTO(updated);
-    }
-
-    @Transactional(readOnly = true)
-    public PageResponse<OrderResponseDTO> getAllOrders(Pageable pageable) {
-        Page<Order> page = orderRepository.findAllByOrderByCreatedAtDesc(pageable);
-        List<OrderResponseDTO> dtos = page.getContent().stream()
-                .map(this::mapToDTO)
+        List<OrderResponseDTO> dtos = orderPage.getContent().stream()
+                .map(OrderResponseDTO::fromEntity)
                 .collect(Collectors.toList());
 
         return new PageResponse<>(
                 dtos,
-                page.getNumber(),
-                page.getSize(),
-                page.getTotalElements(),
-                page.getTotalPages(),
-                page.isLast()
+                orderPage.getNumber(),
+                orderPage.getSize(),
+                orderPage.getTotalElements(),
+                orderPage.getTotalPages(),
+                orderPage.isLast()
         );
     }
 
-    @Transactional
-    public OrderResponseDTO updateOrderStatus(Long orderId, UpdateOrderStatusRequest request) {
+    @Transactional(readOnly = true)
+    public OrderResponseDTO getOrderById(Long orderId, Long userId, boolean isAdmin) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderId));
 
-        if (request.getOrderStatus() != null) {
-            order.setOrderStatus(OrderStatus.valueOf(request.getOrderStatus().toUpperCase()));
+        if (!isAdmin && !order.getUser().getId().equals(userId)) {
+            throw new BadRequestException("Not authorized to view this order");
         }
 
-        if (request.getPaymentStatus() != null) {
-            order.setPaymentStatus(PaymentStatus.valueOf(request.getPaymentStatus().toUpperCase()));
-        }
-
-        Order updated = orderRepository.save(order);
-        return mapToDTO(updated);
+        return OrderResponseDTO.fromEntity(order);
     }
 
-    public OrderResponseDTO mapToDTO(Order order) {
-        OrderResponseDTO dto = new OrderResponseDTO();
-        dto.setId(order.getId());
-        dto.setUserId(order.getUser().getId());
-        dto.setCustomerName(order.getUser().getName());
-        dto.setCustomerEmail(order.getUser().getEmail());
-        dto.setShippingAddress(addressService.mapToDTO(order.getAddress()));
-        dto.setSubtotal(order.getSubtotal());
-        dto.setShippingFee(order.getShippingFee());
-        dto.setTotal(order.getTotal());
-        dto.setPaymentStatus(order.getPaymentStatus().name());
-        dto.setOrderStatus(order.getOrderStatus().name());
-        dto.setPaymentMethod(order.getPaymentMethod());
-        dto.setPaymentId(order.getPaymentId());
-        dto.setCreatedAt(order.getCreatedAt());
-        dto.setUpdatedAt(order.getUpdatedAt());
+    public OrderResponseDTO cancelOrder(Long orderId, Long userId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with ID: " + orderId));
 
-        List<OrderItemResponseDTO> itemDTOs = order.getItems().stream().map(item -> {
-            OrderItemResponseDTO itemDTO = new OrderItemResponseDTO();
-            itemDTO.setId(item.getId());
-            itemDTO.setProductId(item.getProduct().getId());
-            itemDTO.setProductName(item.getProductName());
-            itemDTO.setUnitPrice(item.getUnitPrice());
-            itemDTO.setQuantity(item.getQuantity());
-            itemDTO.setSelectedSize(item.getSelectedSize());
-            itemDTO.setSelectedColor(item.getSelectedColor());
-            itemDTO.setLineTotal(item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
-            itemDTO.setProductImageUrl(item.getProduct().getImageUrl());
-            return itemDTO;
-        }).collect(Collectors.toList());
+        if (!order.getUser().getId().equals(userId)) {
+            throw new BadRequestException("Not authorized to cancel this order");
+        }
 
-        dto.setItems(itemDTOs);
-        return dto;
+        if (order.getStatus() != OrderStatus.ORDER_PLACED && order.getStatus() != OrderStatus.RESTAURANT_CONFIRMED) {
+            throw new BadRequestException("Order cannot be cancelled once preparation or delivery has begun.");
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
+
+        DeliveryStatusHistory history = new DeliveryStatusHistory(order, OrderStatus.CANCELLED, "Order cancelled by customer.");
+        deliveryHistoryRepository.save(history);
+
+        return OrderResponseDTO.fromEntity(order);
     }
 }

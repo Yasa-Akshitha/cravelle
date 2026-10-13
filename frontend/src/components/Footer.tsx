@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Instagram, Facebook, Mail, ArrowRight, ShieldCheck, RefreshCw, Truck } from 'lucide-react';
-import { adminService } from '../services/adminService';
+import { UtensilsCrossed, Send, Heart, ShieldCheck, MapPin, Sparkles } from 'lucide-react';
+import apiClient from '../services/api';
 
 export const Footer: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -10,157 +10,139 @@ export const Footer: React.FC = () => {
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email.trim()) return;
     try {
       setLoading(true);
-      await adminService.subscribeNewsletter(email);
+      await apiClient.post('/api/newsletter/subscribe', { email: email.trim() });
       setSubscribed(true);
       setEmail('');
     } catch {
-      setSubscribed(true); // Graceful fallback
+      // Fallback
+      setSubscribed(true);
+      setEmail('');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <footer className="bg-[#181615] text-[#E4DFD7] pt-20 pb-12 border-t border-[#2B2927]">
-      {/* Brand Value Pillars */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 border-b border-[#2C2926]">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
-          <div className="flex flex-col items-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-[#24211E] flex items-center justify-center text-gold-400">
-              <Truck className="w-6 h-6 stroke-[1.5]" />
+    <footer className="w-full bg-charcoal-900 text-charcoal-200 border-t border-charcoal-800">
+      {/* Top Banner: Newsletter */}
+      <div className="border-b border-charcoal-800/80 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-gradient-to-r from-cravelle-700 via-cravelle-600 to-coral-600 rounded-3xl p-8 sm:p-10 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="max-w-xl text-center md:text-left">
+              <span className="flex items-center justify-center md:justify-start gap-1.5 text-xs font-bold uppercase tracking-wider text-white/80">
+                <Sparkles className="w-4 h-4 text-white" />
+                Cravelle Tasting Journal
+              </span>
+              <h3 className="font-display font-bold text-2xl sm:text-3xl text-white mt-1">
+                Discover curated dishes near your places.
+              </h3>
+              <p className="text-white/80 text-xs sm:text-sm mt-1">
+                Get weekly location-tailored recommendations, campus secrets, and chef specials.
+              </p>
             </div>
-            <h4 className="font-editorial text-lg text-white font-medium">Complimentary Express Shipping</h4>
-            <p className="text-xs text-taupe-400 max-w-xs leading-relaxed">
-              Complimentary expedited delivery across India on orders exceeding ₹3,000.
-            </p>
-          </div>
 
-          <div className="flex flex-col items-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-[#24211E] flex items-center justify-center text-gold-400">
-              <RefreshCw className="w-6 h-6 stroke-[1.5]" />
-            </div>
-            <h4 className="font-editorial text-lg text-white font-medium">14-Day Complimentary Returns</h4>
-            <p className="text-xs text-taupe-400 max-w-xs leading-relaxed">
-              Seamless returns and bespoke size exchanges for unworn items with security tags.
-            </p>
-          </div>
-
-          <div className="flex flex-col items-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-[#24211E] flex items-center justify-center text-gold-400">
-              <ShieldCheck className="w-6 h-6 stroke-[1.5]" />
-            </div>
-            <h4 className="font-editorial text-lg text-white font-medium">Artisanal Craftsmanship</h4>
-            <p className="text-xs text-taupe-400 max-w-xs leading-relaxed">
-              Each silhouette is meticulously tailored using Grade-A mulberry silk, cashmere, and virgin wool.
-            </p>
+            <form onSubmit={handleSubscribe} className="w-full md:w-auto flex flex-col sm:flex-row gap-2">
+              <input
+                type="email"
+                placeholder="Enter your email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="px-4 py-3 rounded-2xl bg-white text-charcoal-900 text-sm focus:outline-none focus:ring-2 focus:ring-white w-full sm:w-72"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-3 rounded-2xl bg-charcoal-900 text-white font-bold text-sm hover:bg-black transition-all shadow-md shrink-0 flex items-center justify-center gap-2"
+              >
+                <span>{subscribed ? 'Subscribed!' : 'Subscribe'}</span>
+                <Send className="w-4 h-4" />
+              </button>
+            </form>
           </div>
         </div>
       </div>
 
-      {/* Main Footer Links & Newsletter */}
+      {/* Main Links */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
-          {/* Column 1: Brand & Atelier */}
-          <div className="lg:col-span-2 space-y-6">
-            <Link to="/" className="inline-block">
-              <span className="font-editorial text-3xl tracking-[0.25em] text-white uppercase font-medium">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
+          
+          {/* Brand Col */}
+          <div className="col-span-2 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cravelle-600 to-coral-400 flex items-center justify-center text-white shadow-md">
+                <UtensilsCrossed className="w-5 h-5" />
+              </div>
+              <span className="text-2xl font-bold tracking-tight text-white font-display">
                 Cravelle
               </span>
-              <p className="text-[10px] tracking-[0.3em] text-gold-500 uppercase mt-1">
-                Haute Couture &bull; Modern Elegance
-              </p>
-            </Link>
-            <p className="text-xs text-taupe-400 leading-relaxed max-w-sm">
-              Cravelle is a contemporary luxury fashion house celebrating refined silhouettes, fluid mulberry silks, and timeless bespoke tailoring designed for the discerning individual.
+            </div>
+            <p className="text-xs text-charcoal-400 max-w-sm leading-relaxed">
+              Cravelle is the next-generation AI-powered food discovery and delivery platform.
+              We recommend meals tailored to the colleges, tech offices, shopping malls, and neighbourhoods you visit every day.
             </p>
-            <div className="flex items-center space-x-4 pt-2">
-              <a href="https://instagram.com" target="_blank" rel="noreferrer" className="w-9 h-9 rounded-full bg-[#262320] flex items-center justify-center text-taupe-300 hover:text-gold-400 hover:bg-[#302D29] transition-colors">
-                <Instagram className="w-4 h-4" />
-              </a>
-              <a href="https://facebook.com" target="_blank" rel="noreferrer" className="w-9 h-9 rounded-full bg-[#262320] flex items-center justify-center text-taupe-300 hover:text-gold-400 hover:bg-[#302D29] transition-colors">
-                <Facebook className="w-4 h-4" />
-              </a>
-              <a href="mailto:concierge@cravelle.com" className="w-9 h-9 rounded-full bg-[#262320] flex items-center justify-center text-taupe-300 hover:text-gold-400 hover:bg-[#302D29] transition-colors">
-                <Mail className="w-4 h-4" />
-              </a>
+            <div className="flex items-center gap-3 text-xs text-cravelle-400 font-semibold">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Grounded in verified kitchens & live menus</span>
             </div>
           </div>
 
-          {/* Column 2: Collections */}
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-white mb-6">Collections</h4>
-            <ul className="space-y-3 text-xs text-taupe-400">
-              <li><Link to="/shop?category=1" className="hover:text-gold-400 transition-colors">Evening & Cocktail Dresses</Link></li>
-              <li><Link to="/shop?category=2" className="hover:text-gold-400 transition-colors">Tailored Wool Blazers</Link></li>
-              <li><Link to="/shop?category=3" className="hover:text-gold-400 transition-colors">Mulberry Silk Blouses</Link></li>
-              <li><Link to="/shop?category=4" className="hover:text-gold-400 transition-colors">Pleated Palazzos & Skirts</Link></li>
-              <li><Link to="/shop?category=5" className="hover:text-gold-400 transition-colors">Artisanal Handbags & Leather</Link></li>
-              <li><Link to="/shop" className="hover:text-gold-400 transition-colors">New Season Catalog</Link></li>
+          {/* Cuisines Col */}
+          <div className="space-y-3">
+            <h4 className="font-display font-bold text-sm text-white uppercase tracking-wider">
+              Popular Cuisines
+            </h4>
+            <ul className="space-y-2 text-xs text-charcoal-400">
+              <li><Link to="/explore?cuisine=biryani" className="hover:text-cravelle-400 transition-colors">Dum Biryani</Link></li>
+              <li><Link to="/explore?cuisine=south-indian" className="hover:text-cravelle-400 transition-colors">South Indian Dosas</Link></li>
+              <li><Link to="/explore?cuisine=north-indian" className="hover:text-cravelle-400 transition-colors">North Indian & Tandoor</Link></li>
+              <li><Link to="/explore?cuisine=italian" className="hover:text-cravelle-400 transition-colors">Wood-Fired Pizza</Link></li>
+              <li><Link to="/explore?cuisine=asian" className="hover:text-cravelle-400 transition-colors">Asian Wok & Baos</Link></li>
+              <li><Link to="/explore?cuisine=healthy" className="hover:text-cravelle-400 transition-colors">Organic Grain Bowls</Link></li>
             </ul>
           </div>
 
-          {/* Column 3: Concierge & Client Care */}
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-white mb-6">Client Concierge</h4>
-            <ul className="space-y-3 text-xs text-taupe-400">
-              <li><Link to="/profile" className="hover:text-gold-400 transition-colors">Track Your Order</Link></li>
-              <li><span className="hover:text-gold-400 transition-colors cursor-pointer">Shipping & Deliveries</span></li>
-              <li><span className="hover:text-gold-400 transition-colors cursor-pointer">14-Day Returns & Exchanges</span></li>
-              <li><span className="hover:text-gold-400 transition-colors cursor-pointer">Garment Care & Fabric Guide</span></li>
-              <li><span className="hover:text-gold-400 transition-colors cursor-pointer">Personal Styling Appointments</span></li>
-              <li><span className="hover:text-gold-400 transition-colors cursor-pointer">Contact Atelier Support</span></li>
+          {/* Place-Based Hubs Col */}
+          <div className="space-y-3">
+            <h4 className="font-display font-bold text-sm text-white uppercase tracking-wider">
+              Explore by Place
+            </h4>
+            <ul className="space-y-2 text-xs text-charcoal-400">
+              <li className="flex items-center gap-1.5"><MapPin className="w-3 h-3 text-cravelle-500" /><Link to="/explore" className="hover:text-cravelle-400">College Campuses</Link></li>
+              <li className="flex items-center gap-1.5"><MapPin className="w-3 h-3 text-cravelle-500" /><Link to="/explore" className="hover:text-cravelle-400">Tech Parks & SEZs</Link></li>
+              <li className="flex items-center gap-1.5"><MapPin className="w-3 h-3 text-cravelle-500" /><Link to="/explore" className="hover:text-cravelle-400">Shopping Destinations</Link></li>
+              <li className="flex items-center gap-1.5"><MapPin className="w-3 h-3 text-cravelle-500" /><Link to="/explore" className="hover:text-cravelle-400">Indiranagar 100ft Road</Link></li>
+              <li className="flex items-center gap-1.5"><MapPin className="w-3 h-3 text-cravelle-500" /><Link to="/explore" className="hover:text-cravelle-400">Koramangala Food Hub</Link></li>
+              <li className="flex items-center gap-1.5"><MapPin className="w-3 h-3 text-cravelle-500" /><Link to="/explore" className="hover:text-cravelle-400">Whitefield Tech Hub</Link></li>
             </ul>
           </div>
 
-          {/* Column 4: Newsletter */}
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-[0.2em] text-white mb-6">Editorial Gazette</h4>
-            <p className="text-xs text-taupe-400 leading-relaxed mb-4">
-              Receive private salon invitations, new seasonal capsule previews, and couture styling essays.
-            </p>
-            {subscribed ? (
-              <div className="p-3 bg-[#24211E] border border-gold-600/30 text-gold-400 text-xs rounded">
-                Thank you for subscribing to the Cravelle Gazette.
-              </div>
-            ) : (
-              <form onSubmit={handleSubscribe} className="space-y-2">
-                <div className="relative">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    required
-                    className="w-full bg-[#24211E] border border-[#3A3632] rounded text-xs text-white placeholder-taupe-500 py-3 pl-3 pr-10 focus:outline-none focus:border-gold-500 transition-colors"
-                  />
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gold-400 hover:text-white p-1.5 transition-colors"
-                    aria-label="Submit newsletter"
-                  >
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-                <p className="text-[10px] text-taupe-500">
-                  By subscribing, you agree to Cravelle&apos;s privacy policy. Unsubscribe anytime.
-                </p>
-              </form>
-            )}
+          {/* Company & Support Col */}
+          <div className="space-y-3">
+            <h4 className="font-display font-bold text-sm text-white uppercase tracking-wider">
+              Cravelle Tech
+            </h4>
+            <ul className="space-y-2 text-xs text-charcoal-400">
+              <li><Link to="/profile" className="hover:text-cravelle-400">Saved Places</Link></li>
+              <li><Link to="/orders" className="hover:text-cravelle-400">Order Tracking</Link></li>
+              <li><Link to="/admin" className="hover:text-cravelle-400">Admin Portal</Link></li>
+              <li><span className="text-charcoal-500">Privacy & Consent</span></li>
+              <li><span className="text-charcoal-500">Terms of Service</span></li>
+              <li><span className="text-charcoal-500">Partner with Us</span></li>
+            </ul>
           </div>
+
         </div>
-      </div>
 
-      {/* Bottom Bar: Copyright & Policies */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 border-t border-[#262320] flex flex-col sm:flex-row items-center justify-between text-[11px] text-taupe-500">
-        <p>&copy; {new Date().getFullYear()} Cravelle Fashion Haute Couture. All rights reserved.</p>
-        <div className="flex space-x-6 mt-4 sm:mt-0">
-          <span className="hover:text-taupe-300 cursor-pointer">Privacy Policy</span>
-          <span className="hover:text-taupe-300 cursor-pointer">Terms of Service</span>
-          <span className="hover:text-taupe-300 cursor-pointer">Store Policies</span>
+        {/* Bottom Bar */}
+        <div className="mt-12 pt-8 border-t border-charcoal-800 text-xs text-charcoal-500 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p>© {new Date().getFullYear()} Cravelle Food Tech Platform. All rights reserved.</p>
+          <p className="flex items-center gap-1">
+            Built with modern Java Spring Boot & React for food lovers everywhere.
+          </p>
         </div>
       </div>
     </footer>

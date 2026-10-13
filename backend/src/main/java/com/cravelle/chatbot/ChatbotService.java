@@ -1,323 +1,248 @@
 package com.cravelle.chatbot;
 
-import com.cravelle.dto.*;
+import com.cravelle.dto.ChatRequest;
+import com.cravelle.dto.ChatResponseDTO;
+import com.cravelle.dto.DishRecommendationCardDTO;
 import com.cravelle.entity.*;
-import com.cravelle.exception.BadRequestException;
+import com.cravelle.recommendation.HaversineDistanceCalculator;
 import com.cravelle.repository.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class ChatbotService {
 
     private static final Logger logger = LoggerFactory.getLogger(ChatbotService.class);
 
-    private final ProductRepository productRepository;
-    private final OrderRepository orderRepository;
-    private final ChatConversationRepository chatConversationRepository;
-    private final ChatMessageRepository chatMessageRepository;
-    private final UserRepository userRepository;
-    private final StorePolicyService storePolicyService;
     private final LlmClient llmClient;
+    private final RestaurantRepository restaurantRepository;
+    private final DishRepository dishRepository;
+    private final SavedPlaceRepository savedPlaceRepository;
+    private final UserPreferenceRepository userPreferenceRepository;
+    private final OrderRepository orderRepository;
+    private final ChatConversationRepository conversationRepository;
+    private final ChatMessageRepository messageRepository;
+    private final ObjectMapper objectMapper;
 
-    public ChatbotService(
-            ProductRepository productRepository,
-            OrderRepository orderRepository,
-            ChatConversationRepository chatConversationRepository,
-            ChatMessageRepository chatMessageRepository,
-            UserRepository userRepository,
-            StorePolicyService storePolicyService,
-            LlmClient llmClient) {
-        this.productRepository = productRepository;
-        this.orderRepository = orderRepository;
-        this.chatConversationRepository = chatConversationRepository;
-        this.chatMessageRepository = chatMessageRepository;
-        this.userRepository = userRepository;
-        this.storePolicyService = storePolicyService;
+    public ChatbotService(LlmClient llmClient,
+                          RestaurantRepository restaurantRepository,
+                          DishRepository dishRepository,
+                          SavedPlaceRepository savedPlaceRepository,
+                          UserPreferenceRepository userPreferenceRepository,
+                          OrderRepository orderRepository,
+                          ChatConversationRepository conversationRepository,
+                          ChatMessageRepository messageRepository,
+                          ObjectMapper objectMapper) {
         this.llmClient = llmClient;
+        this.restaurantRepository = restaurantRepository;
+        this.dishRepository = dishRepository;
+        this.savedPlaceRepository = savedPlaceRepository;
+        this.userPreferenceRepository = userPreferenceRepository;
+        this.orderRepository = orderRepository;
+        this.conversationRepository = conversationRepository;
+        this.messageRepository = messageRepository;
+        this.objectMapper = objectMapper;
     }
 
-    @Transactional
-    public ChatResponseDTO processChat(Long userId, ChatRequest request) {
-        String userQuery = request.getMessage().trim();
+    public ChatResponseDTO processChat(ChatRequest request, User user) {
+        String userQuery = request.getMessage() != null ? request.getMessage().trim() : "";
+        Double userLat = request.getLatitude() != null ? request.getLatitude() : 12.9716;
+        Double userLng = request.getLongitude() != null ? request.getLongitude() : 77.5946;
+        BigDecimal userBudget = request.getBudget();
 
-        // 1. Resolve or create conversation
-        ChatConversation conversation = resolveConversation(userId, request);
+        // 1. Manage Conversation
+        ChatConversation conversation = getOrCreateConversation(request.getConversationId(), user, request.getGuestSessionId());
 
-        // 2. Query matching products from MySQL
-        List<Product> catalogCandidates = findMatchingProducts(userQuery);
-
-        // 3. User order context if authenticated and relevant
-        String orderContext = "";
-        if (userId != null && (userQuery.toLowerCase().contains("order") || userQuery.toLowerCase().contains("track"))) {
-            List<Order> userOrders = orderRepository.findByUserIdOrderByCreatedAtDesc(userId);
-            if (!userOrders.isEmpty()) {
-                Order latest = userOrders.get(0);
-                orderContext = String.format(
-                        "The user has a recent Order #%d placed on %s with status: %s, total: ₹%.2f, payment: %s.",
-                        latest.getId(), latest.getCreatedAt().toLocalDate(), latest.getOrderStatus(), latest.getTotal(), latest.getPaymentStatus()
-                );
-            } else {
-                orderContext = "The user has no previous orders.";
-            }
+        // 2. Fetch User Context
+        UserPreference preference = null;
+        List<SavedPlace> savedPlaces = new ArrayList<>();
+        List<Order> previousOrders = new ArrayList<>();
+        if (user != null) {
+            preference = userPreferenceRepository.findByUserId(user.getId()).orElse(null);
+            savedPlaces = savedPlaceRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+            previousOrders = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
         }
 
-        // 4. Retrieve recent message history
-        List<ChatMessage> history = chatMessageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId());
-        List<Map<String, String>> historyPayload = new ArrayList<>();
-        // Keep last 6 messages
-        int startIdx = Math.max(0, history.size() - 6);
-        for (int i = startIdx; i < history.size(); i++) {
-            ChatMessage m = history.get(i);
-            Map<String, String> item = new HashMap<>();
-            item.put("role", m.getRole().equalsIgnoreCase("USER") ? "user" : "assistant");
-            item.put("content", m.getMessage());
-            historyPayload.add(item);
+        boolean pureVegOnly = preference != null && Boolean.TRUE.equals(preference.getIsPureVeg());
+
+        // 3. Retrieve Verified Restaurant and Dish Catalog
+        List<Restaurant> allRestaurants = restaurantRepository.findAll();
+        List<Dish> allDishes = dishRepository.findAll();
+
+        // 4. Grounded Matching Algorithm
+        List<DishRecommendationCardDTO> recommendedCards = findMatchingDishes(userQuery, userLat, userLng, userBudget, pureVegOnly, savedPlaces, previousOrders, allRestaurants, allDishes);
+
+        // 5. Generate Response (via LLM or Intelligent Fallback Synthesizer)
+        String aiReply;
+        if (llmClient.isConfigured()) {
+            aiReply = generateLlmReply(userQuery, recommendedCards, savedPlaces, preference);
+        } else {
+            aiReply = synthesizeFallbackReply(userQuery, recommendedCards, savedPlaces, preference);
         }
 
-        // 5. Construct System Prompt with Ground Truth
-        StringBuilder catalogContextBuilder = new StringBuilder();
-        for (Product p : catalogCandidates) {
-            catalogContextBuilder.append(String.format(
-                    "- [ID: %d] %s: ₹%s (Category: %s). Description: %s\n",
-                    p.getId(), p.getName(), p.getPrice(),
-                    p.getCategory() != null ? p.getCategory().getName() : "Fashion",
-                    p.getDescription()
-            ));
-        }
+        // 6. Save message history
+        saveMessages(conversation, userQuery, aiReply, recommendedCards);
 
-        String systemPrompt = String.format("""
-            You are Cravelle AI, a sophisticated, warm, and knowledgeable luxury fashion personal stylist for the Cravelle fashion boutique.
-            
-            STORE POLICIES:
-            %s
-            
-            VERIFIED REAL CATALOG ITEMS AVAILABLE IN STORE:
-            %s
-            
-            AUTHENTICATED USER ORDER INFORMATION:
-            %s
-            
-            GUIDELINES:
-            1. Provide elegant, stylish styling advice, outfit recommendations, and pairing tips.
-            2. When recommending products, ONLY recommend items from the VERIFIED REAL CATALOG ITEMS listed above. Mention their exact names and product IDs like [ID: X].
-            3. NEVER invent or hallucinate product IDs, prices, discounts, stock, or order status that are not provided in this context.
-            4. Keep answers chic, helpful, and concise (2-4 paragraphs maximum).
-            """,
-                storePolicyService.getStorePoliciesSummary(),
-                catalogContextBuilder.toString(),
-                orderContext
+        // 7. Dynamic Prompt Pills
+        List<String> suggestedQuestions = List.of(
+                "Find good biryani near my current location",
+                "Suggest quick lunch under ₹200",
+                "What food can I try near my saved college?",
+                "Show healthy vegetarian bowls",
+                "What are your top artisanal desserts?"
         );
 
-        // 6. Generate AI completion or intelligent catalog synthesis
-        String assistantReply = llmClient.generateCompletion(systemPrompt, historyPayload, userQuery);
+        return new ChatResponseDTO(conversation.getId(), aiReply, recommendedCards, suggestedQuestions);
+    }
 
-        if (assistantReply == null || assistantReply.isBlank()) {
-            assistantReply = fallbackStylistReply(userQuery, catalogCandidates, orderContext);
-        }
+    private List<DishRecommendationCardDTO> findMatchingDishes(String query, Double userLat, Double userLng, BigDecimal budget,
+                                                               boolean pureVegOnly, List<SavedPlace> savedPlaces,
+                                                               List<Order> previousOrders,
+                                                               List<Restaurant> restaurants, List<Dish> dishes) {
+        String qLower = query.toLowerCase();
+        List<DishRecommendationCardDTO> matches = new ArrayList<>();
 
-        // 7. Extract & validate recommended product cards against real database records
-        List<ProductRecommendationCardDTO> recommendedCards = extractAndValidateCards(assistantReply, catalogCandidates);
+        // Detect keywords
+        boolean wantsBiryani = qLower.contains("biryani") || qLower.contains("rice");
+        boolean wantsVeg = qLower.contains("veg") || pureVegOnly;
+        boolean wantsCafeOrDessert = qLower.contains("cafe") || qLower.contains("coffee") || qLower.contains("dessert") || qLower.contains("sweet");
+        boolean wantsBudget = qLower.contains("under") || qLower.contains("cheap") || qLower.contains("budget") || qLower.contains("affordable") || budget != null;
+        boolean wantsCollege = qLower.contains("college") || qLower.contains("campus") || qLower.contains("student") || qLower.contains("pes");
+        boolean wantsOffice = qLower.contains("office") || qLower.contains("work") || qLower.contains("prestige");
+        boolean wantsMall = qLower.contains("mall") || qLower.contains("shopping") || qLower.contains("phoenix");
+        boolean wantsHistory = qLower.contains("previous") || qLower.contains("last order") || qLower.contains("reorder");
 
-        // If no cards were extracted via regex but catalog matches exist for a shopping/recommendation query, add top matches
-        if (recommendedCards.isEmpty() && !catalogCandidates.isEmpty() && isRecommendationIntent(userQuery)) {
-            for (int i = 0; i < Math.min(3, catalogCandidates.size()); i++) {
-                Product p = catalogCandidates.get(i);
-                recommendedCards.add(new ProductRecommendationCardDTO(
-                        p.getId(),
-                        p.getName(),
-                        p.getSlug(),
-                        p.getPrice(),
-                        p.getOriginalPrice(),
-                        p.getImageUrl(),
-                        p.getCategory() != null ? p.getCategory().getName() : "Fashion",
-                        "Curated by Cravelle Stylist"
+        BigDecimal maxPrice = budget != null ? budget : (wantsBudget ? BigDecimal.valueOf(250.00) : BigDecimal.valueOf(550.00));
+
+        // Prioritize matching dishes
+        for (Dish dish : dishes) {
+            if (!Boolean.TRUE.equals(dish.getIsAvailable())) continue;
+            if (wantsVeg && !Boolean.TRUE.equals(dish.getIsVeg())) continue;
+            if (dish.getPrice().compareTo(maxPrice) > 0) continue;
+
+            Restaurant rest = dish.getRestaurant();
+            if (rest == null || !Boolean.TRUE.equals(rest.getIsOpen())) continue;
+
+            double dist = HaversineDistanceCalculator.calculateDistanceKm(userLat, userLng, rest.getLatitude(), rest.getLongitude());
+            String rationale = "Curated for your palate";
+
+            boolean isMatch = false;
+
+            if (wantsCollege && (rest.getName().toLowerCase().contains("arogya") || rest.getAddress().toLowerCase().contains("bsk") || rest.getAddress().toLowerCase().contains("pes"))) {
+                isMatch = true;
+                rationale = "Popular student favorite near PES University Campus";
+            } else if (wantsOffice && (rest.getName().toLowerCase().contains("bao") || rest.getName().toLowerCase().contains("green bowl") || rest.getAddress().toLowerCase().contains("marathahalli"))) {
+                isMatch = true;
+                rationale = "Rapid express lunch serving tech teams near Prestige Tech Park";
+            } else if (wantsMall && (rest.getName().toLowerCase().contains("lamour") || rest.getName().toLowerCase().contains("toscano"))) {
+                isMatch = true;
+                rationale = "Artisanal dining & pastries around Phoenix Marketcity";
+            } else if (wantsBiryani && dish.getName().toLowerCase().contains("biryani")) {
+                isMatch = true;
+                rationale = "Top-rated authentic dum biryani made with fragrant spices";
+            } else if (wantsCafeOrDessert && (dish.getName().toLowerCase().contains("tart") || dish.getName().toLowerCase().contains("latte") || dish.getName().toLowerCase().contains("kaapi"))) {
+                isMatch = true;
+                rationale = "Specialty roast & artisanal sweet indulgence";
+            } else if (wantsHistory && !previousOrders.isEmpty()) {
+                isMatch = true;
+                rationale = "Similar to your highly-rated previous orders";
+            } else if (qLower.isEmpty() || dish.getName().toLowerCase().contains(qLower) || rest.getName().toLowerCase().contains(qLower)) {
+                isMatch = true;
+                rationale = "Matches your current search query";
+            } else if (matches.size() < 4) {
+                // General high quality fallback
+                isMatch = true;
+                rationale = "Highly recommended by Cravelle food community";
+            }
+
+            if (isMatch) {
+                matches.add(new DishRecommendationCardDTO(
+                        dish.getId(),
+                        dish.getName(),
+                        rest.getId(),
+                        rest.getName(),
+                        dish.getPrice(),
+                        dish.getImageUrl(),
+                        dish.getIsVeg(),
+                        Math.round(dist * 10.0) / 10.0,
+                        dish.getRating(),
+                        rest.getDeliveryTimeMinutes(),
+                        rationale
                 ));
             }
+
+            if (matches.size() >= 4) break;
         }
 
-        // 8. Persist messages in database
-        chatMessageRepository.save(new ChatMessage(conversation, "USER", userQuery));
-        chatMessageRepository.save(new ChatMessage(conversation, "ASSISTANT", assistantReply));
-
-        // 9. Suggested questions
-        List<String> suggestedQuestions = Arrays.asList(
-                "Show me evening dresses",
-                "Recommend an outfit under ₹3,000",
-                "What is your return & exchange policy?",
-                "How do I style a silk blouse for a cocktail party?"
-        );
-
-        return new ChatResponseDTO(conversation.getId(), assistantReply, recommendedCards, suggestedQuestions);
+        return matches;
     }
 
-    @Transactional(readOnly = true)
-    public ChatHistoryResponseDTO getHistory(Long userId, String guestSessionId) {
-        Optional<ChatConversation> convOpt = Optional.empty();
-        if (userId != null) {
-            convOpt = chatConversationRepository.findTopByUserIdOrderByUpdatedAtDesc(userId);
-        } else if (guestSessionId != null && !guestSessionId.isBlank()) {
-            convOpt = chatConversationRepository.findTopByGuestSessionIdOrderByUpdatedAtDesc(guestSessionId);
+    private String generateLlmReply(String query, List<DishRecommendationCardDTO> cards, List<SavedPlace> savedPlaces, UserPreference pref) {
+        StringBuilder catalogContext = new StringBuilder();
+        catalogContext.append("Verified dishes available for this request:\n");
+        for (DishRecommendationCardDTO c : cards) {
+            catalogContext.append(String.format("- %s from %s (Price: ₹%s, Veg: %s, Distance: %s km, Rating: %s)\n",
+                    c.getName(), c.getRestaurantName(), c.getPrice(), c.getIsVeg(), c.getDistanceKm(), c.getRating()));
         }
 
-        if (convOpt.isEmpty()) {
-            return new ChatHistoryResponseDTO(null, Collections.emptyList());
+        String sysPrompt = "You are Cravelle AI, a passionate, food concierge for Cravelle food discovery & delivery. " +
+                "Help the user discover delicious meals grounded strictly in the provided verified restaurant catalog. " +
+                "Never invent dishes or prices not in the list. Provide appetizing, warm descriptions and guide them to order.";
+
+        String reply = llmClient.generateCompletion(sysPrompt, null, query + "\n\n" + catalogContext);
+        if (reply != null && !reply.trim().isEmpty()) {
+            return reply;
         }
-
-        ChatConversation conv = convOpt.get();
-        List<ChatMessageDTO> messageDTOs = chatMessageRepository.findByConversationIdOrderByCreatedAtAsc(conv.getId())
-                .stream()
-                .map(m -> new ChatMessageDTO(m.getId(), m.getRole(), m.getMessage(), m.getCreatedAt()))
-                .collect(Collectors.toList());
-
-        return new ChatHistoryResponseDTO(conv.getId(), messageDTOs);
+        return synthesizeFallbackReply(query, cards, savedPlaces, pref);
     }
 
-    @Transactional
-    public void clearHistory(Long userId, String guestSessionId) {
-        if (userId != null) {
-            chatConversationRepository.deleteByUserId(userId);
-        } else if (guestSessionId != null && !guestSessionId.isBlank()) {
-            chatConversationRepository.deleteByGuestSessionId(guestSessionId);
+    private String synthesizeFallbackReply(String query, List<DishRecommendationCardDTO> cards, List<SavedPlace> savedPlaces, UserPreference pref) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Welcome to **Cravelle AI**. ");
+
+        if (cards.isEmpty()) {
+            sb.append("I couldn't find exact menu matches for that query within your specified filters. ")
+              .append("Try asking for popular biryanis, healthy bowls, woodfired pizzas, or food near your saved places (like PES University or Prestige Tech Cloud)!");
+            return sb.toString();
         }
+
+        sb.append("Here are handpicked delicacies verified from our local restaurant partners:\n\n");
+        for (DishRecommendationCardDTO card : cards) {
+            sb.append(String.format("• **%s** from *%s* — **₹%.2f** (%s, ~%d mins)\n  *%s*\n\n",
+                    card.getName(),
+                    card.getRestaurantName(),
+                    card.getPrice(),
+                    Boolean.TRUE.equals(card.getIsVeg()) ? "🌱 Pure Veg" : "🍗 Non-Veg",
+                    card.getDeliveryTimeMinutes() != null ? card.getDeliveryTimeMinutes() : 25,
+                    card.getRationale()));
+        }
+
+        sb.append("You can click **Order Now** on any card below to add it directly to your bag!");
+        return sb.toString();
     }
 
-    private ChatConversation resolveConversation(Long userId, ChatRequest request) {
-        if (userId != null) {
-            User user = userRepository.findById(userId).orElse(null);
-            return chatConversationRepository.findTopByUserIdOrderByUpdatedAtDesc(userId)
-                    .orElseGet(() -> chatConversationRepository.save(new ChatConversation(user, null)));
+    private ChatConversation getOrCreateConversation(Long conversationId, User user, String guestSessionId) {
+        if (conversationId != null) {
+            Optional<ChatConversation> existing = conversationRepository.findById(conversationId);
+            if (existing.isPresent()) return existing.get();
         }
-
-        String guestSessionId = request.getGuestSessionId();
-        if (guestSessionId == null || guestSessionId.isBlank()) {
-            guestSessionId = UUID.randomUUID().toString();
-        }
-
-        final String finalGuestSessionId = guestSessionId;
-        return chatConversationRepository.findTopByGuestSessionIdOrderByUpdatedAtDesc(finalGuestSessionId)
-                .orElseGet(() -> chatConversationRepository.save(new ChatConversation(null, finalGuestSessionId)));
+        ChatConversation conv = new ChatConversation(user, guestSessionId);
+        return conversationRepository.save(conv);
     }
 
-    private List<Product> findMatchingProducts(String query) {
-        String lower = query.toLowerCase();
+    private void saveMessages(ChatConversation conv, String userQuery, String reply, List<DishRecommendationCardDTO> cards) {
+        ChatMessage uMsg = new ChatMessage(conv, "user", userQuery);
+        messageRepository.save(uMsg);
 
-        // Check for budget mentions (e.g., "under 2000", "under ₹1500")
-        Pattern pricePattern = Pattern.compile("(?:under|below|less than|within)\\s*(?:₹|rs\\.?|inr)?\\s*(\\d+)");
-        Matcher priceMatcher = pricePattern.matcher(lower);
-        BigDecimal maxBudget = null;
-        if (priceMatcher.find()) {
-            try {
-                maxBudget = new BigDecimal(priceMatcher.group(1));
-            } catch (Exception ignored) {}
-        }
-
-        // Search in product catalog
-        List<Product> products = productRepository.findAll();
-        List<Product> filtered = new ArrayList<>();
-
-        for (Product p : products) {
-            if (p.getStatus() != ProductStatus.ACTIVE) continue;
-
-            if (maxBudget != null && p.getPrice().compareTo(maxBudget) > 0) {
-                continue;
-            }
-
-            boolean matches = lower.contains("dress") && p.getName().toLowerCase().contains("dress")
-                    || lower.contains("blazer") && p.getName().toLowerCase().contains("blazer")
-                    || lower.contains("blouse") && p.getName().toLowerCase().contains("blouse")
-                    || lower.contains("trouser") && p.getName().toLowerCase().contains("trouser")
-                    || lower.contains("bag") && p.getName().toLowerCase().contains("tote")
-                    || lower.contains("gold") && p.getName().toLowerCase().contains("gold")
-                    || lower.contains("silk") && p.getName().toLowerCase().contains("silk")
-                    || lower.contains("skirt") && p.getName().toLowerCase().contains("skirt")
-                    || lower.contains(p.getName().toLowerCase().split(" ")[0]);
-
-            if (matches || maxBudget != null) {
-                filtered.add(p);
-            }
-        }
-
-        if (filtered.isEmpty()) {
-            // Return top active products if no specific match
-            return productRepository.findTop8ByStatusOrderByCreatedAtDesc(ProductStatus.ACTIVE);
-        }
-
-        return filtered;
-    }
-
-    private List<ProductRecommendationCardDTO> extractAndValidateCards(String reply, List<Product> catalogCandidates) {
-        List<ProductRecommendationCardDTO> cards = new ArrayList<>();
-        Set<Long> addedIds = new HashSet<>();
-
-        // Match "[ID: 1]" or "ID: 1"
-        Pattern pattern = Pattern.compile("ID:\\s*(\\d+)");
-        Matcher matcher = pattern.matcher(reply);
-
-        while (matcher.find()) {
-            try {
-                Long id = Long.parseLong(matcher.group(1));
-                if (!addedIds.contains(id)) {
-                    // Validate ID strictly against active database products
-                    productRepository.findById(id).filter(p -> p.getStatus() == ProductStatus.ACTIVE).ifPresent(p -> {
-                        addedIds.add(p.getId());
-                        cards.add(new ProductRecommendationCardDTO(
-                                p.getId(),
-                                p.getName(),
-                                p.getSlug(),
-                                p.getPrice(),
-                                p.getOriginalPrice(),
-                                p.getImageUrl(),
-                                p.getCategory() != null ? p.getCategory().getName() : "Fashion",
-                                "Recommended for your style inquiry"
-                        ));
-                    });
-                }
-            } catch (Exception ignored) {}
-        }
-
-        return cards;
-    }
-
-    private boolean isRecommendationIntent(String query) {
-        String lower = query.toLowerCase();
-        return lower.contains("recommend") || lower.contains("show") || lower.contains("find")
-                || lower.contains("outfit") || lower.contains("dress") || lower.contains("blazer")
-                || lower.contains("under") || lower.contains("party") || lower.contains("college")
-                || lower.contains("event") || lower.contains("wear");
-    }
-
-    private String fallbackStylistReply(String query, List<Product> catalogCandidates, String orderContext) {
-        String lower = query.toLowerCase();
-
-        if (lower.contains("policy") || lower.contains("shipping") || lower.contains("return")) {
-            return "At Cravelle, we offer complimentary shipping on all orders over ₹3,000 (standard express delivery is ₹150 for orders below). We also pride ourselves on a seamless 14-day return and exchange policy for unworn pieces with tags intact. If you require assistance with an existing order, feel free to reach out to support@cravelle.com.";
-        }
-
-        if (!orderContext.isBlank() && (lower.contains("order") || lower.contains("track"))) {
-            return "Here is the status of your order: " + orderContext + ". If you have questions about shipment milestones, our support concierge is at your service.";
-        }
-
-        StringBuilder reply = new StringBuilder();
-        reply.append("Welcome to Cravelle. Based on your style preferences, I have curated these bespoke pieces from our atelier:\n\n");
-
-        int count = 0;
-        for (Product p : catalogCandidates) {
-            reply.append(String.format("• **%s** [ID: %d] — ₹%s. Beautifully crafted with fine fabrics.\n",
-                    p.getName(), p.getId(), p.getPrice()));
-            if (++count >= 3) break;
-        }
-
-        reply.append("\nPair these with delicate accessories for a polished and effortless look. Let me know if you would like styling tips for a specific occasion or color palette!");
-        return reply.toString();
+        ChatMessage aMsg = new ChatMessage(conv, "assistant", reply);
+        messageRepository.save(aMsg);
     }
 }

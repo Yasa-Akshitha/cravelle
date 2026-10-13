@@ -1,61 +1,75 @@
 package com.cravelle.dto;
 
+import com.cravelle.entity.Address;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 
 public class AddressDTO {
 
     private Long id;
+    private String label = "Home";
 
-    @NotBlank(message = "Recipient name is required")
-    private String recipientName;
+    @NotBlank(message = "Street address is required")
+    private String street;
 
-    @NotBlank(message = "Phone number is required")
-    @Size(min = 7, max = 20, message = "Phone number must be between 7 and 20 digits")
-    private String phone;
-
-    @NotBlank(message = "Address line is required")
-    private String addressLine;
+    private String area;
 
     @NotBlank(message = "City is required")
-    private String city;
+    private String city = "Bangalore";
 
-    @NotBlank(message = "State is required")
-    private String state;
+    @NotBlank(message = "Pincode is required")
+    private String pincode;
 
-    @NotBlank(message = "Postal code is required")
-    private String postalCode;
-
-    private String country = "India";
-
-    private boolean isDefault = false;
+    private Double latitude;
+    private Double longitude;
+    private Boolean isDefault = false;
 
     public AddressDTO() {}
+
+    public static AddressDTO fromEntity(Address address) {
+        AddressDTO dto = new AddressDTO();
+        dto.setId(address.getId());
+        dto.setLabel(address.getLabel());
+        dto.setStreet(address.getStreet());
+        dto.setArea(address.getArea());
+        dto.setCity(address.getCity());
+        dto.setPincode(address.getPincode());
+        dto.setLatitude(address.getLatitude());
+        dto.setLongitude(address.getLongitude());
+        dto.setIsDefault(address.getIsDefault());
+        return dto;
+    }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public String getRecipientName() { return recipientName; }
-    public void setRecipientName(String recipientName) { this.recipientName = recipientName; }
+    public String getLabel() { return label; }
+    public void setLabel(String label) { this.label = label; }
 
-    public String getPhone() { return phone; }
-    public void setPhone(String phone) { this.phone = phone; }
+    public String getStreet() { return street; }
+    public void setStreet(String street) { this.street = street; }
 
-    public String getAddressLine() { return addressLine; }
-    public void setAddressLine(String addressLine) { this.addressLine = addressLine; }
+    public String getArea() { return area; }
+    public void setArea(String area) { this.area = area; }
 
     public String getCity() { return city; }
     public void setCity(String city) { this.city = city; }
 
-    public String getState() { return state; }
-    public void setState(String state) { this.state = state; }
+    public String getPincode() { return pincode; }
+    public void setPincode(String pincode) { this.pincode = pincode; }
 
-    public String getPostalCode() { return postalCode; }
-    public void setPostalCode(String postalCode) { this.postalCode = postalCode; }
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
 
-    public String getCountry() { return country; }
-    public void setCountry(String country) { this.country = country; }
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 
-    public boolean isDefault() { return isDefault; }
-    public void setDefault(boolean aDefault) { isDefault = aDefault; }
+    public Boolean getIsDefault() { return isDefault; }
+    public void setIsDefault(Boolean isDefault) { this.isDefault = isDefault; }
+
+    // Convenience aliases for frontend compatibility
+    public String getAddressLine() { return street; }
+    public void setAddressLine(String addressLine) { this.street = addressLine; }
+
+    public String getPostalCode() { return pincode; }
+    public void setPostalCode(String postalCode) { this.pincode = postalCode; }
 }

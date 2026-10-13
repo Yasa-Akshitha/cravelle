@@ -1,222 +1,446 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, Star, ShieldCheck, ChevronRight, Compass } from 'lucide-react';
-import { productService } from '../services/productService';
-import { categoryService } from '../services/categoryService';
-import { Product, Category } from '../types';
-import { ProductCard } from '../components/ProductCard';
-import { ProductGridSkeleton } from '../components/LoadingSkeleton';
+import { Link, useNavigate } from 'react-router-dom';
+import { 
+  Sparkles, 
+  MapPin, 
+  Compass, 
+  Search, 
+  ArrowRight, 
+  Clock, 
+  Star, 
+  GraduationCap, 
+  Briefcase, 
+  ShoppingBag, 
+  TrendingUp, 
+  Percent, 
+  Utensils, 
+  ChevronRight,
+  Flame,
+  ShieldCheck
+} from 'lucide-react';
+import { useLocation } from '../context/LocationContext';
+import { recommendationService } from '../services/recommendationService';
+import { restaurantService } from '../services/restaurantService';
+import { Restaurant, Cuisine, PlaceRecommendation, Dish } from '../types';
+import { RestaurantCard } from '../components/RestaurantCard';
+import { DishCard } from '../components/DishCard';
+import { NearbyMap } from '../components/NearbyMap';
 
-export const HomePage: React.FC = () => {
-  const [newArrivals, setNewArrivals] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+const POPULAR_CUISINES = [
+  { name: 'Dum Biryani', slug: 'biryani', icon: '🍗', bg: 'bg-amber-100', text: 'text-amber-800' },
+  { name: 'South Indian', slug: 'south-indian', icon: '🥞', bg: 'bg-orange-100', text: 'text-orange-800' },
+  { name: 'North Indian', slug: 'north-indian', icon: '🍛', bg: 'bg-red-100', text: 'text-red-800' },
+  { name: 'Italian Pizza', slug: 'italian', icon: '🍕', bg: 'bg-rose-100', text: 'text-rose-800' },
+  { name: 'Healthy Bowls', slug: 'healthy', icon: '🥗', bg: 'bg-emerald-100', text: 'text-emerald-800' },
+  { name: 'Asian Wok', slug: 'asian', icon: '🍜', bg: 'bg-blue-100', text: 'text-blue-800' },
+  { name: 'Patisserie & Cafe', slug: 'desserts', icon: '🥐', bg: 'bg-purple-100', text: 'text-purple-800' },
+  { name: 'Burgers', slug: 'burgers', icon: '🍔', bg: 'bg-yellow-100', text: 'text-yellow-800' },
+];
 
+export const HomePage: React.FC<{ onOpenChat: () => void }> = ({ onOpenChat }) => {
+  const navigate = useNavigate();
+  const { location, openLocationModal } = useLocation();
+
+  const [nearbyRestaurants, setNearbyRestaurants] = useState<Restaurant[]>([]);
+  const [placeRecommendations, setPlaceRecommendations] = useState<PlaceRecommendation[]>([]);
+  const [activePlaceTab, setActivePlaceTab] = useState<string>('COLLEGE');
+  const [popularRestaurants, setPopularRestaurants] = useState<Restaurant[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // Fetch location-based recommendations whenever active coordinates change
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [arrivalsData, categoriesData] = await Promise.all([
-          productService.getNewArrivals(),
-          categoryService.getCategories(),
-        ]);
-        setNewArrivals(arrivalsData);
-        setCategories(categoriesData);
+        // 1. Get personalized & place-based recommendations
+        const recResponse = await recommendationService.getPersonalized(
+          location.latitude,
+          location.longitude
+        );
+        setNearbyRestaurants(recResponse.nearCurrentLocation || recResponse.nearbyRestaurants || []);
+        setPlaceRecommendations(recResponse.inspiredByPlaces || recResponse.placeRecommendations || []);
+
+        // 2. Get top-rated restaurants
+        const restPage = await restaurantService.getAll({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          minRating: 4.5,
+          size: 6,
+        });
+        setPopularRestaurants(restPage.content || []);
       } catch (err) {
-        console.error('Error fetching homepage data:', err);
+        console.error('Error fetching recommendations:', err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [location.latitude, location.longitude]);
+
+  // Filter place recommendation by selected tab
+  const currentPlaceRec = placeRecommendations.find(
+    (p) => p.placeType === activePlaceTab
+  ) || placeRecommendations[0];
 
   return (
-    <div className="space-y-20 pb-20">
-      {/* 1. Large Fashion Campaign Hero Banner */}
-      <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden bg-[#1E1B19]">
-        {/* Hero Background Image */}
-        <div className="absolute inset-0 z-0">
-          <img
-            src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=2000&q=85"
-            alt="Cravelle Haute Couture Campaign"
-            className="w-full h-full object-cover object-top opacity-55 scale-105 transition-transform duration-1000 ease-out"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#141211] via-[#1E1B19]/40 to-transparent" />
-        </div>
+    <div className="w-full min-h-screen bg-cream-50/60 pb-20 space-y-16">
+      
+      {/* 1. HERO SECTION */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-cream-100 via-cream-50 to-white pt-10 pb-16 sm:pb-24 border-b border-cravelle-100">
+        
+        {/* Subtle Decorative Ambient Circles */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-cravelle-200/30 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-coral-200/25 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20"></div>
 
-        {/* Hero Content */}
-        <div className="relative z-10 max-w-4xl mx-auto px-6 text-center space-y-6 pt-12">
-          <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-gold-400/30 text-gold-300 text-xs tracking-widest uppercase font-medium">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>The Spring/Summer Atelier Collection</span>
-          </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            
+            {/* Left Hero Copy */}
+            <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+              
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cream-200/80 border border-cravelle-200 text-cravelle-700 text-xs font-bold uppercase tracking-wider shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-cravelle-500 animate-pulse" />
+                <span>AI-Powered Food Discovery Platform</span>
+              </div>
 
-          <h1 className="font-editorial text-4xl sm:text-6xl md:text-7xl text-[#FCFBF7] font-medium tracking-tight leading-[1.1]">
-            Discover Your <br />
-            <span className="italic font-normal text-gold-300">Signature Style</span>
-          </h1>
+              <h1 className="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl text-charcoal-900 tracking-tight leading-[1.12]">
+                Discover food that matches <span className="text-transparent bg-clip-text bg-gradient-to-r from-cravelle-600 via-cravelle-500 to-coral-500">your journey</span>.
+              </h1>
 
-          <p className="text-sm sm:text-base text-cream-200 max-w-xl mx-auto font-light leading-relaxed">
-            Where Parisian tailoring meets fluid mulberry silk. Crafted for timeless evenings, power dressing, and effortless modern grandeur.
-          </p>
+              <p className="text-base sm:text-lg text-charcoal-500 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
+                Cravelle recommends fresh meals tailored to the colleges you attend, the tech offices you work at, the malls you visit, and the exact cravings you have right now.
+              </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Link
-              to="/shop"
-              className="w-full sm:w-auto px-8 py-3.5 btn-gold text-xs font-semibold uppercase tracking-widest rounded shadow-xl inline-flex items-center justify-center space-x-2"
-            >
-              <span>Explore Collection</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              to="/shop?category=1"
-              className="w-full sm:w-auto px-8 py-3.5 bg-white/10 hover:bg-white/20 text-white border border-white/30 text-xs font-semibold uppercase tracking-widest rounded backdrop-blur-sm transition-all"
-            >
-              Evening Silhouettes
-            </Link>
+              {/* Location Bar & Quick Action */}
+              <div className="p-2 sm:p-2.5 rounded-3xl bg-white shadow-card border border-cravelle-200/80 max-w-xl mx-auto lg:mx-0 flex flex-col sm:flex-row items-center gap-2">
+                <div 
+                  onClick={openLocationModal}
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-cream-50 cursor-pointer flex-1 w-full transition-colors group"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-cravelle-500 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                    <MapPin className="w-5 h-5" />
+                  </div>
+                  <div className="text-left truncate">
+                    <span className="block text-[10px] uppercase font-bold text-charcoal-400">
+                      Exploring Location
+                    </span>
+                    <span className="block font-bold text-sm text-charcoal-800 truncate">
+                      {location.placeName}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => navigate('/explore')}
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-2xl btn-primary font-bold text-sm shadow-md hover:shadow-lg flex items-center justify-center gap-2 shrink-0"
+                >
+                  <Search className="w-4 h-4" />
+                  <span>Find Food</span>
+                </button>
+              </div>
+
+              {/* Value Props Pills */}
+              <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-4 text-xs font-semibold text-charcoal-600">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-green-600" />
+                  Verified Real Menus
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-cravelle-500" />
+                  Context-Aware Recommendations
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-coral-500" />
+                  30-Min Fast Delivery
+                </span>
+              </div>
+
+            </div>
+
+            {/* Right Hero Visual Card */}
+            <div className="lg:col-span-5 relative">
+              <div className="relative mx-auto max-w-md rounded-3xl overflow-hidden shadow-2xl border border-charcoal-100 bg-white">
+                <img
+                  src="https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=800&q=80"
+                  alt="Cravelle Dum Biryani"
+                  className="w-full h-80 object-cover"
+                />
+
+                {/* Floating AI Recommendation Overlay */}
+                <div className="p-5 bg-white space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="px-2.5 py-1 rounded-full bg-cream-200 text-cravelle-700 text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-cravelle-500" />
+                      Cravelle AI Pick
+                    </span>
+                    <span className="text-xs font-bold text-green-600">● 25 mins away</span>
+                  </div>
+
+                  <div>
+                    <h3 className="font-display font-bold text-lg text-charcoal-800">
+                      Hyderabadi Shahi Dum Biryani
+                    </h3>
+                    <p className="text-xs text-charcoal-400 mt-0.5">
+                      Matched to your high spice preference & college budget (₹240)
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-charcoal-100 flex items-center justify-between">
+                    <span className="font-extrabold text-lg text-charcoal-900">₹240</span>
+                    <button
+                      onClick={onOpenChat}
+                      className="px-4 py-2 rounded-xl btn-primary text-xs font-bold shadow-sm flex items-center gap-1.5"
+                    >
+                      <span>Ask AI Concierge</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
 
-      {/* 2. Featured Categories Row */}
+      {/* 2. QUICK CUISINE CATEGORIES */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center space-y-3 mb-12">
-          <span className="text-xs uppercase tracking-[0.25em] text-gold-600 font-semibold">Atelier Curation</span>
-          <h2 className="font-editorial text-3xl sm:text-4xl text-charcoal-700">Explore by Category</h2>
-          <div className="w-12 h-0.5 bg-gold-500 mx-auto mt-2" />
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="font-display font-bold text-2xl text-charcoal-800">
+              Quick Cravings
+            </h2>
+            <p className="text-xs text-charcoal-400 mt-0.5">
+              Explore hand-crafted culinary genres loved across the city
+            </p>
+          </div>
+          <Link
+            to="/explore"
+            className="text-xs font-bold text-cravelle-600 hover:underline flex items-center gap-1"
+          >
+            <span>All Cuisines</span>
+            <ChevronRight className="w-4 h-4" />
+          </Link>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
-          {categories.map((cat) => (
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+          {POPULAR_CUISINES.map((c, i) => (
             <Link
-              key={cat.id}
-              to={`/shop?category=${cat.id}`}
-              className="group relative aspect-[3/4] rounded-lg overflow-hidden bg-cream-100 border border-taupe-200 shadow-soft hover:shadow-card transition-all duration-300"
+              key={i}
+              to={`/explore?cuisine=${c.slug}`}
+              className="flex flex-col items-center p-4 rounded-2xl bg-white border border-charcoal-100 hover:border-cravelle-300 shadow-xs hover:shadow-card hover:-translate-y-1 transition-all group text-center"
             >
-              <img
-                src={cat.imageUrl || 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=800&q=80'}
-                alt={cat.name}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-108"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              <div className="absolute bottom-4 inset-x-4 text-center">
-                <h3 className="font-editorial text-base sm:text-lg text-white font-medium group-hover:text-gold-300 transition-colors">
-                  {cat.name}
-                </h3>
-                <span className="text-[10px] uppercase tracking-wider text-taupe-300 mt-1 inline-flex items-center space-x-1 group-hover:text-white">
-                  <span>View Capsule</span>
-                  <ChevronRight className="w-3 h-3" />
-                </span>
+              <div className={`w-14 h-14 rounded-2xl ${c.bg} flex items-center justify-center text-2xl shadow-inner group-hover:scale-110 transition-transform mb-2`}>
+                {c.icon}
               </div>
+              <span className={`text-xs font-bold ${c.text} line-clamp-1`}>
+                {c.name}
+              </span>
             </Link>
           ))}
         </div>
       </section>
 
-      {/* 3. New Arrivals Section */}
+      {/* 3. INSPIRED BY PLACES YOU VISIT (Core Feature) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-taupe-200 gap-4">
-          <div>
-            <span className="text-xs uppercase tracking-[0.25em] text-gold-600 font-semibold">Fresh Off The Loom</span>
-            <h2 className="font-editorial text-3xl sm:text-4xl text-charcoal-700 mt-1">New Arrivals</h2>
-          </div>
-          <Link
-            to="/shop"
-            className="inline-flex items-center space-x-1.5 text-xs font-semibold uppercase tracking-wider text-charcoal-600 hover:text-gold-600 transition-colors"
-          >
-            <span>View All Pieces</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
-        {loading ? (
-          <ProductGridSkeleton count={4} />
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {newArrivals.slice(0, 4).map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* 4. Editorial Campaign Showcase Banner */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative rounded-2xl overflow-hidden bg-charcoal-700 text-white min-h-[460px] flex items-center shadow-xl">
-          <div className="absolute inset-0 z-0">
-            <img
-              src="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=1800&q=85"
-              alt="Editorial Cravelle Campaign"
-              className="w-full h-full object-cover opacity-35"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent" />
-          </div>
-
-          <div className="relative z-10 max-w-xl p-8 sm:p-14 space-y-6">
-            <div className="text-gold-400 text-xs uppercase tracking-[0.3em] font-semibold">
-              The Silk & Cashmere Manifesto
+        <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-cream-100 via-white to-cream-50 border border-cravelle-200/80 shadow-card">
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cravelle-500 text-white text-[10px] font-bold uppercase tracking-wider mb-2">
+                <MapPin className="w-3 h-3" />
+                Signature Feature
+              </div>
+              <h2 className="font-display font-bold text-2xl sm:text-3xl text-charcoal-900">
+                Inspired by Places You Visit
+              </h2>
+              <p className="text-xs sm:text-sm text-charcoal-500 mt-1 max-w-xl">
+                Whether you just left class at college, finished meetings at the tech park, or strolled through the mall — Cravelle personalizes food to your journey.
+              </p>
             </div>
-            <h2 className="font-editorial text-3xl sm:text-5xl leading-tight">
-              Fluid Mulberry Silks Crafted for Quiet Opulence
-            </h2>
-            <p className="text-xs sm:text-sm text-taupe-300 font-light leading-relaxed">
-              Every seam is finished by hand. Designed for transitions between private gallery receptions, high-profile summits, and midnight galas.
-            </p>
-            <div className="pt-2">
-              <Link
-                to="/shop?category=3"
-                className="px-8 py-3.5 btn-gold text-xs font-semibold uppercase tracking-widest rounded inline-flex items-center space-x-2"
+
+            {/* Place Category Selector Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <button
+                onClick={() => setActivePlaceTab('COLLEGE')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                  activePlaceTab === 'COLLEGE'
+                    ? 'bg-cravelle-500 text-white shadow-md'
+                    : 'bg-white border border-charcoal-200 text-charcoal-700 hover:bg-cream-100'
+                }`}
               >
-                <span>Shop Silk Blouses</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+                <GraduationCap className="w-4 h-4" />
+                <span>Colleges & Campuses</span>
+              </button>
+
+              <button
+                onClick={() => setActivePlaceTab('OFFICE')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                  activePlaceTab === 'OFFICE'
+                    ? 'bg-cravelle-500 text-white shadow-md'
+                    : 'bg-white border border-charcoal-200 text-charcoal-700 hover:bg-cream-100'
+                }`}
+              >
+                <Briefcase className="w-4 h-4" />
+                <span>Offices & Tech Parks</span>
+              </button>
+
+              <button
+                onClick={() => setActivePlaceTab('MALL')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                  activePlaceTab === 'MALL'
+                    ? 'bg-cravelle-500 text-white shadow-md'
+                    : 'bg-white border border-charcoal-200 text-charcoal-700 hover:bg-cream-100'
+                }`}
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Shopping Malls</span>
+              </button>
             </div>
           </div>
+
+          {/* Place Rationale Description */}
+          {currentPlaceRec && (
+            <div className="mb-6 p-4 rounded-2xl bg-cream-200/60 border border-cravelle-200 text-xs sm:text-sm text-charcoal-700 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <Sparkles className="w-4 h-4 text-cravelle-500 shrink-0" />
+                <div>
+                  <strong>{currentPlaceRec.placeName}:</strong> {currentPlaceRec.rationale}
+                </div>
+              </div>
+              <button
+                onClick={openLocationModal}
+                className="text-xs font-bold text-cravelle-600 hover:underline shrink-0"
+              >
+                Manage Saved Places →
+              </button>
+            </div>
+          )}
+
+          {/* Restaurant Cards Grid for this Place */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {(currentPlaceRec?.nearbyRestaurants || nearbyRestaurants.slice(0, 3)).map((restaurant) => (
+              <RestaurantCard key={restaurant.id} restaurant={restaurant} />
+            ))}
+          </div>
+
         </div>
       </section>
 
-      {/* 5. Trending Now Grid */}
+      {/* 4. NEAR YOUR CURRENT LOCATION */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 pb-4 border-b border-taupe-200 gap-4">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <span className="text-xs uppercase tracking-[0.25em] text-gold-600 font-semibold">Most Desired</span>
-            <h2 className="font-editorial text-3xl sm:text-4xl text-charcoal-700 mt-1">Trending in the Atelier</h2>
+            <h2 className="font-display font-bold text-2xl text-charcoal-800 flex items-center gap-2">
+              <span>Near Your Location</span>
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-cravelle-100 text-cravelle-700 border border-cravelle-200">
+                {location.placeName}
+              </span>
+            </h2>
+            <p className="text-xs text-charcoal-400 mt-0.5">
+              Verified kitchens ready to deliver piping hot meals within minutes
+            </p>
           </div>
           <Link
-            to="/shop"
-            className="inline-flex items-center space-x-1.5 text-xs font-semibold uppercase tracking-wider text-charcoal-600 hover:text-gold-600 transition-colors"
+            to="/explore"
+            className="text-xs font-bold text-cravelle-600 hover:underline flex items-center gap-1"
           >
-            <span>Explore Catalog</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <span>See All</span>
+            <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
 
-        {loading ? (
-          <ProductGridSkeleton count={4} />
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {newArrivals.slice(4, 8).map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* 6. Customer Testimonials / Press Quotes */}
-      <section className="bg-cream-100 py-16 border-y border-taupe-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
-          <span className="text-xs uppercase tracking-[0.3em] text-gold-600 font-semibold">Editorial Acclaim</span>
-          <h2 className="font-editorial text-2xl sm:text-3xl text-charcoal-800 max-w-2xl mx-auto italic font-normal leading-relaxed">
-            &ldquo;Cravelle redefines affordable luxury with silhouettes that feel worthy of Parisian haute couture week. An absolute tour-de-force.&rdquo;
-          </h2>
-          <div className="space-y-1">
-            <p className="text-xs uppercase tracking-widest text-charcoal-600 font-bold">Vogue Style Gazette</p>
-            <p className="text-[11px] text-taupe-500">October Seasonal Edition</p>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {nearbyRestaurants.slice(0, 4).map((restaurant) => (
+            <RestaurantCard key={restaurant.id} restaurant={restaurant} />
+          ))}
         </div>
       </section>
+
+      {/* 5. INTERACTIVE MAP SECTION */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-4">
+          <h2 className="font-display font-bold text-2xl text-charcoal-800">
+            Interactive Restaurant Radar
+          </h2>
+          <p className="text-xs text-charcoal-400 mt-0.5">
+            Locate kitchens geographically plotted around your selected campus or workplace hub
+          </p>
+        </div>
+
+        <NearbyMap restaurants={nearbyRestaurants.length > 0 ? nearbyRestaurants : popularRestaurants} />
+      </section>
+
+      {/* 6. POPULAR AROUND YOU */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="font-display font-bold text-2xl text-charcoal-800 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-cravelle-500" />
+              <span>Popular Around You</span>
+            </h2>
+            <p className="text-xs text-charcoal-400 mt-0.5">
+              Highest rated dining spots with 4.5+ star customer ratings
+            </p>
+          </div>
+          <Link
+            to="/explore?sort=rating"
+            className="text-xs font-bold text-cravelle-600 hover:underline flex items-center gap-1"
+          >
+            <span>Top Rated</span>
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {popularRestaurants.slice(0, 3).map((restaurant) => (
+            <RestaurantCard key={restaurant.id} restaurant={restaurant} />
+          ))}
+        </div>
+      </section>
+
+      {/* 7. CRAVELLE AI ASSISTANT BANNER */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="rounded-3xl bg-gradient-to-r from-charcoal-900 via-charcoal-800 to-charcoal-900 p-8 sm:p-12 text-white shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 border border-charcoal-700">
+          
+          <div className="max-w-xl space-y-4 text-center md:text-left">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cravelle-500/20 text-cravelle-400 border border-cravelle-500/30 text-xs font-bold uppercase tracking-wider">
+              <Sparkles className="w-4 h-4 text-cravelle-400 animate-pulse" />
+              <span>Cravelle AI Concierge</span>
+            </div>
+            
+            <h2 className="font-display font-bold text-3xl sm:text-4xl text-white">
+              Can't decide what to eat? Ask Cravelle AI.
+            </h2>
+            
+            <p className="text-charcoal-300 text-sm leading-relaxed">
+              Tell our assistant your budget ("Under ₹200"), your dietary preferences ("Pure veg only"), or where you're studying or working. We return verified dishes ready to order immediately.
+            </p>
+
+            <div className="pt-2 flex flex-wrap gap-2 justify-center md:justify-start">
+              <span className="px-3 py-1 rounded-full bg-charcoal-800 text-[11px] text-charcoal-300 border border-charcoal-700">
+                "What's good near PES College?"
+              </span>
+              <span className="px-3 py-1 rounded-full bg-charcoal-800 text-[11px] text-charcoal-300 border border-charcoal-700">
+                "Healthy bowls under ₹300"
+              </span>
+            </div>
+          </div>
+
+          <div className="shrink-0">
+            <button
+              onClick={onOpenChat}
+              className="px-8 py-4 rounded-2xl btn-primary font-bold text-sm shadow-float hover:scale-105 transition-transform flex items-center gap-2"
+            >
+              <Sparkles className="w-5 h-5" />
+              <span>Launch AI Food Concierge</span>
+            </button>
+          </div>
+
+        </div>
+      </section>
+
     </div>
   );
 };

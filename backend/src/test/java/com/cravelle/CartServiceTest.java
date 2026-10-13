@@ -3,9 +3,9 @@ package com.cravelle;
 import com.cravelle.dto.AddToCartRequest;
 import com.cravelle.dto.CartResponseDTO;
 import com.cravelle.entity.*;
-import com.cravelle.exception.InsufficientStockException;
 import com.cravelle.repository.CartItemRepository;
-import com.cravelle.repository.ProductVariantRepository;
+import com.cravelle.repository.CartRepository;
+import com.cravelle.repository.DishRepository;
 import com.cravelle.repository.UserRepository;
 import com.cravelle.service.CartService;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,7 +16,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,10 +26,13 @@ import static org.mockito.Mockito.*;
 class CartServiceTest {
 
     @Mock
+    private CartRepository cartRepository;
+
+    @Mock
     private CartItemRepository cartItemRepository;
 
     @Mock
-    private ProductVariantRepository productVariantRepository;
+    private DishRepository dishRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -39,44 +41,44 @@ class CartServiceTest {
     private CartService cartService;
 
     private User sampleUser;
-    private Product sampleProduct;
-    private ProductVariant sampleVariant;
+    private Restaurant sampleRestaurant;
+    private Dish sampleDish;
+    private Cart sampleCart;
 
     @BeforeEach
     void setUp() {
-        sampleUser = new User("Test Customer", "test@example.com", "pass", Role.CUSTOMER);
-        sampleUser.setId(1L);
+        sampleUser = new User("Rahul Sharma", "rahul@example.com", "pass", Role.ROLE_CUSTOMER);
+        sampleUser.setId(2L);
 
-        sampleProduct = new Product(null, "Silk Dress", "silk-dress", "Desc", new BigDecimal("2500.00"), null, "img.jpg");
-        sampleProduct.setId(100L);
+        sampleRestaurant = new Restaurant();
+        sampleRestaurant.setId(1L);
+        sampleRestaurant.setName("Meghana Foods");
+        sampleRestaurant.setIsOpen(true);
+        sampleRestaurant.setDeliveryFee(BigDecimal.valueOf(35.00));
 
-        sampleVariant = new ProductVariant(sampleProduct, "M", "Rose", 5);
-        sampleVariant.setId(200L);
+        sampleDish = new Dish();
+        sampleDish.setId(10L);
+        sampleDish.setName("Chicken Biryani");
+        sampleDish.setRestaurant(sampleRestaurant);
+        sampleDish.setPrice(BigDecimal.valueOf(310.00));
+        sampleDish.setIsAvailable(true);
+
+        sampleCart = new Cart(sampleUser);
+        sampleCart.setId(5L);
     }
 
     @Test
     void testAddToCartSuccess() {
-        AddToCartRequest request = new AddToCartRequest(200L, 2);
+        AddToCartRequest request = new AddToCartRequest(10L, 1, "Extra salan please");
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
-        when(productVariantRepository.findById(200L)).thenReturn(Optional.of(sampleVariant));
-        when(cartItemRepository.findByUserIdAndProductVariantId(1L, 200L)).thenReturn(Optional.empty());
-        when(cartItemRepository.findByUserId(1L)).thenReturn(Collections.emptyList());
+        when(dishRepository.findById(10L)).thenReturn(Optional.of(sampleDish));
+        when(cartRepository.findByUserId(2L)).thenReturn(Optional.of(sampleCart));
+        when(cartItemRepository.findByCartIdAndDishId(5L, 10L)).thenReturn(Optional.empty());
+        when(cartRepository.save(any(Cart.class))).thenReturn(sampleCart);
 
-        CartResponseDTO cart = cartService.addToCart(1L, request);
+        CartResponseDTO response = cartService.addItem(2L, null, request);
 
-        assertNotNull(cart);
-        verify(cartItemRepository).save(any(CartItem.class));
-    }
-
-    @Test
-    void testAddToCartInsufficientStockThrowsException() {
-        AddToCartRequest request = new AddToCartRequest(200L, 10); // variant only has 5
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
-        when(productVariantRepository.findById(200L)).thenReturn(Optional.of(sampleVariant));
-
-        assertThrows(InsufficientStockException.class, () -> cartService.addToCart(1L, request));
-        verify(cartItemRepository, never()).save(any(CartItem.class));
+        assertNotNull(response);
+        verify(cartItemRepository, times(1)).save(any(CartItem.class));
     }
 }

@@ -1,7 +1,11 @@
 package com.cravelle.controller;
 
 import com.cravelle.chatbot.ChatbotService;
-import com.cravelle.dto.*;
+import com.cravelle.dto.ApiResponse;
+import com.cravelle.dto.ChatRequest;
+import com.cravelle.dto.ChatResponseDTO;
+import com.cravelle.entity.User;
+import com.cravelle.repository.UserRepository;
 import com.cravelle.security.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,42 +16,29 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/chat")
-@Tag(name = "AI Chatbot", description = "Cravelle AI Personal Fashion Stylist")
+@Tag(name = "AI Chatbot", description = "Cravelle AI Food Discovery & Delivery Assistant")
 public class ChatbotController {
 
     private final ChatbotService chatbotService;
+    private final UserRepository userRepository;
 
-    public ChatbotController(ChatbotService chatbotService) {
+    public ChatbotController(ChatbotService chatbotService, UserRepository userRepository) {
         this.chatbotService = chatbotService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping
-    @Operation(summary = "Chat with Cravelle AI shopping assistant")
+    @Operation(summary = "Chat with Cravelle AI food concierge")
     public ResponseEntity<ApiResponse<ChatResponseDTO>> chat(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody ChatRequest request) {
-        Long userId = userPrincipal != null ? userPrincipal.getId() : null;
-        ChatResponseDTO response = chatbotService.processChat(userId, request);
+
+        User user = null;
+        if (userPrincipal != null) {
+            user = userRepository.findById(userPrincipal.getId()).orElse(null);
+        }
+
+        ChatResponseDTO response = chatbotService.processChat(request, user);
         return ResponseEntity.ok(ApiResponse.ok(response));
-    }
-
-    @GetMapping("/history")
-    @Operation(summary = "Get conversation history")
-    public ResponseEntity<ApiResponse<ChatHistoryResponseDTO>> getHistory(
-            @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @RequestParam(required = false) String guestSessionId) {
-        Long userId = userPrincipal != null ? userPrincipal.getId() : null;
-        ChatHistoryResponseDTO history = chatbotService.getHistory(userId, guestSessionId);
-        return ResponseEntity.ok(ApiResponse.ok(history));
-    }
-
-    @DeleteMapping("/history")
-    @Operation(summary = "Clear conversation history")
-    public ResponseEntity<ApiResponse<String>> clearHistory(
-            @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @RequestParam(required = false) String guestSessionId) {
-        Long userId = userPrincipal != null ? userPrincipal.getId() : null;
-        chatbotService.clearHistory(userId, guestSessionId);
-        return ResponseEntity.ok(ApiResponse.ok("Chat history cleared", null));
     }
 }

@@ -1,12 +1,10 @@
 package com.cravelle.entity;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Entity
-@Table(name = "cart_items", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"user_id", "product_variant_id"})
-})
+@Table(name = "cart_items")
 public class CartItem {
 
     @Id
@@ -14,58 +12,47 @@ public class CartItem {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "cart_id", nullable = false)
+    private Cart cart;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "product_variant_id", nullable = false)
-    private ProductVariant productVariant;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "dish_id", nullable = false)
+    private Dish dish;
 
     @Column(nullable = false)
     private Integer quantity = 1;
 
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
+    private BigDecimal unitPrice;
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    @Column(name = "special_instructions", length = 255)
+    private String specialInstructions;
 
     public CartItem() {}
 
-    public CartItem(User user, ProductVariant productVariant, Integer quantity) {
-        this.user = user;
-        this.productVariant = productVariant;
-        this.quantity = quantity != null ? quantity : 1;
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
-        if (updatedAt == null) updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+    public CartItem(Cart cart, Dish dish, Integer quantity, BigDecimal unitPrice, String specialInstructions) {
+        this.cart = cart;
+        this.dish = dish;
+        this.quantity = quantity;
+        this.unitPrice = unitPrice;
+        this.specialInstructions = specialInstructions;
     }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+    public Cart getCart() { return cart; }
+    public void setCart(Cart cart) { this.cart = cart; }
 
-    public ProductVariant getProductVariant() { return productVariant; }
-    public void setProductVariant(ProductVariant productVariant) { this.productVariant = productVariant; }
+    public Dish getDish() { return dish; }
+    public void setDish(Dish dish) { this.dish = dish; }
 
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public BigDecimal getUnitPrice() { return unitPrice; }
+    public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public String getSpecialInstructions() { return specialInstructions; }
+    public void setSpecialInstructions(String specialInstructions) { this.specialInstructions = specialInstructions; }
 }

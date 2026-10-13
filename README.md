@@ -1,185 +1,143 @@
-# Cravelle — Luxury Fashion E-Commerce Platform
+# Cravelle — AI-Powered Food Discovery & Delivery Platform
 
-Cravelle is an editorial, luxury fashion e-commerce web application featuring high-end women's apparel, fluid mulberry silks, tailored outerwear, artisanal accessories, and an intelligent **Cravelle AI** shopping stylist powered by real LLM integration and catalog grounding.
+Cravelle is a modern, responsive full-stack food recommendation and delivery web application. Cravelle helps users discover food based on the places they visit every day (colleges, tech offices, shopping malls, parks, and neighbourhoods), their current GPS location, personal food preferences, meal budget, and cravings.
 
----
-
-## 1. Project Overview & Features
-
-- **Editorial Fashion Experience**: Warm cream, soft blush, taupe, and subtle gold palette with serif typography, large editorial campaign banners, and micro-animations.
-- **Full-Stack Separation**: Decoupled React + Vite + TypeScript frontend and Java 17+ Spring Boot 3 backend.
-- **Persistent Catalog & Variants**: Server-side product filtering by category, price, and query; multi-variant support (size/color/stock) with live availability checks.
-- **Persistent Shopping Bag**: Authenticated server-side cart persistence, live price recalculation, and free shipping progress tracker.
-- **Atelier Wishlist**: Saved favorite items with instant add-to-bag capability.
-- **Bespoke Checkout**: Saved addresses, payment selection (Cash on Delivery or Test Gateway), atomic order placement, inventory reduction, and order cancellation with stock restoration.
-- **Cravelle AI Personal Stylist**: Real conversational shopping assistant that answers policy questions, queries active catalog products from the database, and renders interactive product recommendation cards.
-- **Administrative Atelier**: Role-protected dashboard for sales metrics, product CRUD with variants, order fulfillment updates, and newsletter management.
-- **Security**: BCrypt password hashing, stateless JWT Bearer authorization, input validation, and sanitized global exception responses.
+The platform provides end-to-end food discovery, an intelligent **Cravelle AI Concierge** grounded in verified local menus, cart and checkout workflows, live 6-stage delivery progression tracking with simulated demo advancement, and an authorized administrative management portal.
 
 ---
 
-## 2. Technology Stack & Architecture
+## 1. System Architecture
 
-### Frontend
-- **Framework**: React 18 with Vite 5 & TypeScript
-- **Styling**: Tailwind CSS 3.4 with custom typography and luxury palette
-- **Routing**: React Router 6 (SPA)
-- **HTTP Client**: Centralized Axios client with automatic Bearer token injection
-- **Icons**: Lucide React
-- **Hosting Target**: Vercel
-
-### Backend
-- **Language & Runtime**: Java 17+ (Java 21 compatible)
-- **Framework**: Spring Boot 3.2.5
-- **Build Tool**: Apache Maven (with `mvnw` and `mvnw.cmd`)
-- **Security**: Spring Security 6 with JJWT 0.12.5 (stateless token authentication)
-- **ORM**: Spring Data JPA & Hibernate 6
-- **Database Migrations**: Flyway (V1 Schema, V2 Seed Catalog)
-- **API Documentation**: Springdoc OpenAPI 2.5 & Swagger UI
-- **Hosting Target**: Render (Docker or Native Maven Web Service)
-
-### Database
-- **Production**: MySQL 8.0+
-- **Local Fallback / Unit Tests**: Embedded H2 database in MySQL-compatible mode
-
----
-
-## 3. Architecture & Layering
-
-```
-Browser Client (React + TypeScript)
-        │
-        ▼ (REST APIs over HTTPS via VITE_API_BASE_URL)
-Spring Boot Layer (cravelle-backend)
-  ├── Security Filters (JWT Token Validation)
-  ├── Controllers (@RestController)
-  ├── Services (Business Logic & Transactions)
-  ├── Chatbot Engine (MySQL Grounding + LLM Completion)
-  ├── Repositories (Spring Data JPA)
-  └── Flyway Migrations
-        │
-        ▼
-MySQL 8.0 Database (Entities: users, categories, products, variants, orders, chat, etc.)
-```
-
----
-
-## 4. Folder Structure
-
-```
+```text
 cravelle/
-├── frontend/
-│   ├── public/
-│   │   └── favicon.svg
+├── frontend/                     # React.js 18 + Vite 5 + TypeScript + Tailwind CSS
 │   ├── src/
-│   │   ├── components/      # Navbar, Footer, ProductCard, ChatbotModal, SearchModal
-│   │   ├── context/         # AuthContext, CartContext, WishlistContext
-│   │   ├── pages/           # Home, Shop, ProductDetail, Cart, Wishlist, Checkout, Profile, Admin
-│   │   ├── services/        # Centralized Axios API client & endpoints
-│   │   ├── types/           # Shared TypeScript interfaces
-│   │   ├── App.tsx          # Application routing
-│   │   ├── main.tsx         # React root
-│   │   └── index.css        # Tailwind styling & Google Fonts
+│   │   ├── components/           # Navbar, LocationModal, RestaurantCard, DishCard,
+│   │   │                         # NearbyMap, CartDrawer, CravelleAIChatbot, Footer
+│   │   ├── pages/                # HomePage, RestaurantListingPage, RestaurantDetailPage,
+│   │   │                         # CheckoutPage, OrdersListPage, OrderTrackingPage,
+│   │   │                         # ProfilePage, AdminDashboardPage, LoginPage, RegisterPage
+│   │   ├── context/              # AuthContext, LocationContext, CartContext
+│   │   ├── services/             # api, auth, restaurant, location, recommendation,
+│   │   │                         # cart, order, chat, admin
+│   │   └── types/                # Strict TypeScript interfaces for all domain entities
 │   ├── package.json
-│   ├── vite.config.ts
-│   ├── tailwind.config.js
-│   ├── vercel.json          # SPA rewrite rules
-│   └── .env.example
-├── backend/
+│   └── vercel.json               # SPA routing rewrite configuration for Vercel
+├── backend/                      # Java 17/21 + Spring Boot 3.2.5 (Maven)
 │   ├── src/main/java/com/cravelle/
-│   │   ├── CravelleApplication.java
-│   │   ├── chatbot/         # ChatbotService, LlmClient, StorePolicyService
-│   │   ├── config/          # SecurityConfig, CorsConfig, OpenApiConfig, DatabaseInitializer
-│   │   ├── controller/      # REST API endpoints (Auth, Products, Orders, Admin, etc.)
-│   │   ├── dto/             # Request & Response Data Transfer Objects
-│   │   ├── entity/          # JPA Hibernate entities
-│   │   ├── exception/       # GlobalExceptionHandler & custom exceptions
-│   │   ├── payment/         # PaymentService (COD & Test Gateway)
-│   │   ├── repository/      # Spring Data JPA repositories
-│   │   ├── security/        # JwtTokenProvider, JwtAuthenticationFilter, UserPrincipal
-│   │   ├── service/         # Transactional business logic
-│   │   └── util/            # Slug and string helpers
+│   │   ├── config/               # SecurityConfig, CorsConfig, DatabaseInitializer, Swagger
+│   │   ├── controller/           # Auth, Location, Recommendation, Restaurant, Dish,
+│   │   │                         # Cart, Order, Chatbot, Admin, Health, UserPreference
+│   │   ├── service/              # Business logic & transaction handling
+│   │   ├── repository/           # 19 Spring Data JPA repositories
+│   │   ├── entity/               # Hibernate JPA entities
+│   │   ├── dto/                  # Request & response transfer objects with validation
+│   │   ├── security/             # JWT authentication filter & user principal
+│   │   ├── recommendation/       # Haversine distance math & place rationale synthesis
+│   │   ├── delivery/             # 6-stage delivery tracking & demo simulator
+│   │   └── chatbot/              # Grounded LLM client & verified dish synthesizer
 │   ├── src/main/resources/
-│   │   ├── application.properties
-│   │   ├── application-dev.properties
-│   │   └── db/migration/    # Flyway V1 & V2 SQL scripts
-│   ├── src/test/java/com/cravelle/ # JUnit 5 and Mockito test suite
-│   ├── pom.xml
-│   ├── mvnw / mvnw.cmd
-│   ├── Dockerfile           # Multi-stage production container build
-│   └── .env.example
+│   │   ├── db/migration/         # Flyway migrations (V1__init_food_schema, V2__seed_food_data)
+│   │   └── application.properties
+│   ├── Dockerfile                # Multi-stage production container build for Render
+│   └── pom.xml
 ├── database/
-│   ├── schema.sql           # Complete MySQL DDL schema documentation
-│   └── seed_data.sql        # Sample catalog products & initial admin accounts
+│   ├── schema.sql                # Production MySQL 8 schema (18 food tables)
+│   └── seed_data.sql             # Production seed restaurants, dishes & places
 └── README.md
 ```
 
 ---
 
-## 5. Prerequisites
+## 2. Technology Stack
 
-- **Java JDK**: 17 or higher (`java -version`)
-- **Maven**: 3.8+ (or use the included `./mvnw`)
-- **Node.js**: 18+ or 20+ (`node -v`)
-- **npm**: 9+ (`npm -v`)
-- **MySQL**: 8.0+ (optional locally, as an in-memory MySQL-compatible database runs automatically for testing and dev)
+### Frontend (Deploy on Vercel)
+- **Framework**: React 18 with Vite 5 and TypeScript
+- **Styling**: Tailwind CSS 3.4 with custom warm food palette (`cravelle` orange, `coral`, `cream`, `charcoal`, `veg` green, `nonveg` red)
+- **Typography**: Google Fonts (*Outfit* display headers & *Plus Jakarta Sans* body)
+- **Routing**: React Router 6 SPA
+- **HTTP Client**: Axios with automatic JWT Bearer token injection and ApiResponse unwrapping
+- **Icons**: Lucide React
+- **Maps**: Interactive Food Radar component with coordinate pins and user GPS center
 
----
-
-## 6. Environment Variables Configuration
-
-### Backend Environment Variables (`backend/.env` or Render Dashboard)
-
-| Variable | Description | Example / Default |
-|---|---|---|
-| `PORT` | Web server port | `8080` |
-| `DB_URL` | JDBC URL for MySQL database | `jdbc:mysql://localhost:3306/cravelle?createDatabaseIfNotExist=true&useSSL=false` |
-| `DB_USERNAME` | Database username | `root` or `cravelle_user` |
-| `DB_PASSWORD` | Database password | `your_secret_db_password` |
-| `DB_DRIVER` | JDBC driver class name | `com.mysql.cj.jdbc.Driver` |
-| `JWT_SECRET` | 256-bit secret key for HMAC-SHA256 signing | Min 32 character random string |
-| `JWT_EXPIRATION_MS`| Token lifetime in ms | `86400000` (24 hours) |
-| `FRONTEND_URL` | Allowed CORS origins (comma-separated) | `https://cravelle.vercel.app,http://localhost:5173` |
-| `AI_API_KEY` | LLM API key (OpenAI or Google Gemini) | `AIzaSy...` or `sk-...` |
-| `AI_MODEL` | LLM model identifier | `gemini-1.5-flash` or `gpt-4o-mini` |
-| `AI_BASE_URL` | OpenAI-compatible endpoint | `https://generativelanguage.googleapis.com/v1beta/openai` |
-
-### Frontend Environment Variables (`frontend/.env` or Vercel Dashboard)
-
-| Variable | Description | Example / Default |
-|---|---|---|
-| `VITE_API_BASE_URL` | URL to the deployed Java backend | `http://localhost:8080` (local) or `https://cravelle-backend.onrender.com` (prod) |
+### Backend (Deploy on Render)
+- **Language & Runtime**: Java 17+ (Java 21 compatible)
+- **Framework**: Spring Boot 3.2.5 (Spring Web, Spring Data JPA, Spring Security)
+- **Build Tool**: Apache Maven (with `mvnw` and `mvnw.cmd`)
+- **Security**: Stateless JWT authentication (JJWT 0.12.5) with BCrypt password hashing
+- **Database Engine**: MySQL 8.0+ (with Flyway migration management and H2 in-memory MySQL mode for local testing)
+- **AI Integration**: Spring AI / Java HTTP Client grounded in verified backend database records
+- **Documentation**: OpenAPI 3 / Swagger UI (`/swagger-ui.html`)
+- **Testing**: JUnit 5 and Mockito test suite
 
 ---
 
-## 7. Local Setup & Execution Instructions
+## 3. Core Features
 
-### Step 1: Run the Backend
+### 1. Location & Place-Based Discovery
+- **Browser Geolocation API**: Prompt for GPS access with fallback manual location selection.
+- **Places You Visit**: Personalized food recommendations inspired by:
+  - **Colleges & Campuses** (e.g. PES University Campus)
+  - **Offices & Tech Parks** (e.g. Prestige Tech Cloud, RMZ Ecospace)
+  - **Shopping Malls** (e.g. Phoenix Marketcity)
+  - **Neighbourhoods & Hubs** (e.g. Indiranagar 100ft Road, Koramangala 5th Block)
+- **Saved Places Manager**: Users can save and manage their daily hubs with one click.
+- **Privacy & Consent**: Transparent location tracking with clear-history and delete-place controls.
 
+### 2. Grounded AI Food Concierge (Cravelle AI)
+- Floating assistant drawer accessible across every page.
+- Natural-language queries (e.g., *"What should I eat near my college under ₹250?"*, *"Suggest healthy bowls near my office"*).
+- Grounded strictly in actual restaurant and dish records from the backend database (no hallucinated prices or restaurants).
+- Renders interactive dish cards with price, rating, and direct **Order** action buttons.
+
+### 3. Food Ordering & Live 6-Stage Delivery Tracking
+- Single-restaurant cart validation with automated item totals, delivery fees, and 5% GST taxes.
+- Cash on Delivery (COD) and Razorpay Test Mode checkout options.
+- Visual 6-Stage Delivery Progression:
+  1. `ORDER_PLACED`
+  2. `RESTAURANT_CONFIRMED`
+  3. `BEING_PREPARED`
+  4. `READY_FOR_PICKUP`
+  5. `OUT_FOR_DELIVERY`
+  6. `DELIVERED`
+- **Simulate Next Step (Demo Mode)**: Interactive button on the tracking page to advance the simulated delivery stage in real-time.
+
+### 4. Admin Dashboard
+- Role-protected management for partner restaurants and menus.
+- Real-time stock toggle (`In Stock` / `Sold Out`).
+- Live order status dispatcher and revenue metrics.
+
+---
+
+## 4. Pre-Seeded Test Credentials
+
+| Role | Email | Password | Description |
+| :--- | :--- | :--- | :--- |
+| **Administrator** | `admin@cravelle.com` | `Cravelle123!` | Full admin dashboard access |
+| **Customer** | `rahul@example.com` | `Cravelle123!` | Student @ PES University campus |
+| **Customer** | `priya@example.com` | `Cravelle123!` | Techie @ Prestige Tech Park |
+
+---
+
+## 5. Local Setup & Running Instructions
+
+### Prerequisites
+- Java Development Kit (JDK 17 or JDK 21)
+- Node.js 18+ and npm
+
+### 1. Run Backend (Java Spring Boot)
 ```bash
 cd backend
 
-# Build and execute all tests
-./mvnw clean test
+# On Windows:
+.\mvnw.cmd spring-boot:run
 
-# Run the Spring Boot application locally
+# On Linux/macOS:
 ./mvnw spring-boot:run
 ```
-*(On Windows PowerShell, use `.\mvnw.cmd spring-boot:run` or `mvn spring-boot:run`).*
+*The backend starts at `http://localhost:8080`. Flyway automatically creates the database schema and seeds sample restaurants, dishes, and places.*
 
-The backend starts on `http://localhost:8080`.
-- **Health Check**: `http://localhost:8080/health`
-- **Swagger UI**: `http://localhost:8080/swagger-ui.html`
-- **OpenAPI JSON**: `http://localhost:8080/v3/api-docs`
-
-#### Default Pre-Seeded Accounts:
-- **Administrator**: `admin@cravelle.com` / `Cravelle123!`
-- **Customer**: `sophia@example.com` / `Cravelle123!`
-
-### Step 2: Run the Frontend
-
-In a separate terminal window:
-
+### 2. Run Frontend (React + Vite)
 ```bash
 cd frontend
 
@@ -189,78 +147,54 @@ npm install
 # Start development server
 npm run dev
 ```
+*The frontend starts at `http://localhost:5173`.*
 
-Visit `http://localhost:5173` in your browser.
-
----
-
-## 8. Cravelle AI Assistant Architecture
-
-The Cravelle AI assistant implements strict database grounding:
-1. The customer sends an inquiry to `POST /api/chat`.
-2. The `ChatbotService` extracts styling keywords, occasion, or budget and queries matching active products from MySQL via `ProductRepository`.
-3. If the user is authenticated and asks about order tracking, their recent orders are retrieved from `OrderRepository`.
-4. A grounded prompt is assembled with store policies, real verified products with exact IDs, and recent conversation history.
-5. The `LlmClient` dispatches the request to the configured LLM API. If the key is unconfigured or a network timeout occurs, an intelligent catalog synthesis fallback executes seamlessly.
-6. Recommended product IDs in the response are verified against the database before returning structured `ProductRecommendationCard` widgets to the frontend.
-
----
-
-## 9. Deployment Instructions
-
-### Deploy Frontend on Vercel
-
-1. Push your repository to GitHub.
-2. In the Vercel dashboard, click **Add New Project** and select your repository.
-3. Configure the project:
-   - **Root Directory**: `frontend`
-   - **Framework Preset**: `Vite`
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
-4. In **Environment Variables**, set:
-   - `VITE_API_BASE_URL`: `https://your-backend-service.onrender.com`
-5. Deploy. `frontend/vercel.json` ensures full SPA client-side routing on page refresh.
-
-### Deploy Backend on Render
-
-1. Create a managed MySQL instance (on Aiven, PlanetScale, Railway, or AWS RDS).
-2. On Render, click **New +** &rarr; **Web Service**.
-3. Select your repository and set the **Root Directory** to `backend`.
-4. Set the **Environment** to `Docker` (Render will automatically detect `backend/Dockerfile`).
-5. In **Environment Variables**, configure:
-   - `DB_URL`: `jdbc:mysql://<host>:<port>/<dbname>?useSSL=true&requireSSL=true&serverTimezone=UTC`
-   - `DB_USERNAME`: `<your_db_username>`
-   - `DB_PASSWORD`: `<your_db_password>`
-   - `DB_DRIVER`: `com.mysql.cj.jdbc.Driver`
-   - `JWT_SECRET`: `<a-secure-random-32-char-string>`
-   - `FRONTEND_URL`: `https://<your-vercel-domain>.vercel.app`
-   - `AI_API_KEY`: `<your_gemini_or_openai_api_key>`
-   - `AI_MODEL`: `gemini-1.5-flash`
-   - `AI_BASE_URL`: `https://generativelanguage.googleapis.com/v1beta/openai`
-6. Click **Deploy Web Service**. Flyway will automatically run schema migrations `V1` and `V2` upon startup.
-
----
-
-## 10. Testing
-
-### Run Backend Unit & Integration Tests:
+### 3. Run Backend Automated Tests
 ```bash
 cd backend
-mvn clean test
+.\mvnw.cmd test
 ```
-
-### Run Frontend Production Build Validation:
-```bash
-cd frontend
-npm run build
-```
+*Runs all 6 unit and integration test suites (`CravelleApplicationTests`, `AuthServiceTest`, `CartServiceTest`, `ChatbotServiceTest`).*
 
 ---
 
-## 11. Security & Best Practices Summary
+## 6. Environment Variables
 
-- Plaintext passwords are never stored; all credentials use BCrypt hashing.
-- Controllers never touch raw database entities; DTOs ensure encapsulation.
-- All monetary totals and inventory deductions are computed and executed on the backend within ACID transactions.
-- Wildcard CORS is prohibited when handling authenticated requests.
-- Chatbot prompts never leak API secrets, and product recommendations are strictly checked against existing inventory.
+### Backend (`backend/.env` or Render environment settings)
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `PORT` | HTTP port for backend server | `8080` |
+| `DB_URL` | MySQL JDBC connection string | `jdbc:mysql://localhost:3306/cravelledb` |
+| `DB_USERNAME` | MySQL database user | `root` |
+| `DB_PASSWORD` | MySQL database password | `password` |
+| `JWT_SECRET` | 256-bit secret string for token signing | `cravelleSecretKeyFoodTechApp2026SecureLongString123` |
+| `AI_API_KEY` | Real AI Language Model API key | `""` (graceful verified synthesizer fallback active) |
+| `AI_MODEL` | AI model identifier | `gemini-1.5-flash` |
+| `FRONTEND_URL` | Deployed frontend domain for CORS | `http://localhost:5173` |
+
+### Frontend (`frontend/.env` or Vercel environment settings)
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `VITE_API_BASE_URL` | URL pointing to the deployed Java backend | `http://localhost:8080` |
+
+---
+
+## 7. Deployment Instructions
+
+### Deploy Frontend to Vercel
+1. Link your GitHub repository to Vercel.
+2. Set the Root Directory to `frontend`.
+3. Framework Preset: `Vite`.
+4. Build Command: `npm run build`.
+5. Output Directory: `dist`.
+6. Add Environment Variable:
+   - `VITE_API_BASE_URL`: URL of your deployed Render backend (e.g. `https://cravelle-backend.onrender.com`).
+
+### Deploy Backend to Render
+1. Create a new **Web Service** on Render pointing to your repository.
+2. Select **Docker** environment (uses `backend/Dockerfile`), or **Java Maven** runtime.
+3. Root Directory: `backend`.
+4. Environment Variables:
+   - Configure `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, and `FRONTEND_URL`.
+   - Set `PORT` to `8080` (or leave default for Render).
+5. The healthcheck endpoint is live at `/health`.

@@ -1,65 +1,49 @@
 import apiClient from './api';
-import { ApiResponse, Category, DashboardStats, Order, PageResponse, Product } from '../types';
+import { DashboardStats, Order, Restaurant, Dish } from '../types';
 
 export const adminService = {
-  async getDashboard(): Promise<DashboardStats> {
-    const res = await apiClient.get<ApiResponse<DashboardStats>>('/api/admin/dashboard');
-    return res.data.data;
+  async getDashboardStats(): Promise<DashboardStats> {
+    const res = await apiClient.get<DashboardStats>('/api/admin/dashboard/stats');
+    return res.data;
   },
 
-  async createProduct(data: any): Promise<Product> {
-    const res = await apiClient.post<ApiResponse<Product>>('/api/admin/products', data);
-    return res.data.data;
+  async getAllOrders(): Promise<Order[]> {
+    const res = await apiClient.get<Order[]>('/api/admin/orders');
+    return res.data;
   },
 
-  async updateProduct(id: number, data: any): Promise<Product> {
-    const res = await apiClient.put<ApiResponse<Product>>(`/api/admin/products/${id}`, data);
-    return res.data.data;
-  },
-
-  async deleteProduct(id: number): Promise<void> {
-    await apiClient.delete(`/api/admin/products/${id}`);
-  },
-
-  async createCategory(data: any): Promise<Category> {
-    const res = await apiClient.post<ApiResponse<Category>>('/api/admin/categories', data);
-    return res.data.data;
-  },
-
-  async updateCategory(id: number, data: any): Promise<Category> {
-    const res = await apiClient.put<ApiResponse<Category>>(`/api/admin/categories/${id}`, data);
-    return res.data.data;
-  },
-
-  async deleteCategory(id: number): Promise<void> {
-    await apiClient.delete(`/api/admin/categories/${id}`);
-  },
-
-  async getAllOrders(page = 0, size = 20): Promise<PageResponse<Order>> {
-    const res = await apiClient.get<ApiResponse<PageResponse<Order>>>('/api/admin/orders', {
-      params: { page, size },
+  async updateOrderStatus(orderId: number, status: string, note?: string): Promise<Order> {
+    const res = await apiClient.put<Order>(`/api/admin/orders/${orderId}/status`, null, {
+      params: { status, note }
     });
-    return res.data.data;
+    return res.data;
   },
 
-  async updateOrderStatus(id: number, orderStatus: string, paymentStatus?: string): Promise<Order> {
-    const res = await apiClient.patch<ApiResponse<Order>>(`/api/admin/orders/${id}/status`, {
-      orderStatus,
-      paymentStatus,
-    });
-    return res.data.data;
+  async createRestaurant(data: any): Promise<Restaurant> {
+    const res = await apiClient.post<Restaurant>('/api/admin/restaurants', data);
+    return res.data;
   },
 
-  async deleteReview(id: number): Promise<void> {
-    await apiClient.delete(`/api/admin/reviews/${id}`);
+  async updateRestaurant(id: number, data: any): Promise<Restaurant> {
+    const res = await apiClient.put<Restaurant>(`/api/admin/restaurants/${id}`, data);
+    return res.data;
   },
 
-  async getSubscribers(): Promise<any[]> {
-    const res = await apiClient.get<ApiResponse<any[]>>('/api/admin/subscribers');
-    return res.data.data;
+  async deleteRestaurant(id: number): Promise<void> {
+    await apiClient.delete(`/api/admin/restaurants/${id}`);
   },
 
-  async subscribeNewsletter(email: string): Promise<void> {
-    await apiClient.post('/api/newsletter/subscribe', { email });
+  async createDish(restaurantId: number, data: any): Promise<Dish> {
+    const res = await apiClient.post<Dish>(`/api/admin/restaurants/${restaurantId}/dishes`, data);
+    return res.data;
   },
+
+  async toggleDishAvailability(dishId: number): Promise<Dish> {
+    const res = await apiClient.patch<Dish>(`/api/admin/dishes/${dishId}/toggle-availability`);
+    return res.data;
+  },
+
+  async deleteDish(dishId: number): Promise<void> {
+    await apiClient.delete(`/api/admin/dishes/${dishId}`);
+  }
 };

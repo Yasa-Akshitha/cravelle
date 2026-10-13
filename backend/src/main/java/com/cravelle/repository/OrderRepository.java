@@ -2,7 +2,6 @@ package com.cravelle.repository;
 
 import com.cravelle.entity.Order;
 import com.cravelle.entity.OrderStatus;
-import com.cravelle.entity.PaymentStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,20 +16,21 @@ import java.util.Optional;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
+    Optional<Order> findByOrderNumber(String orderNumber);
+
     List<Order> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     Page<Order> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
-
-    Optional<Order> findByIdAndUserId(Long id, Long userId);
 
     Page<Order> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     List<Order> findTop5ByOrderByCreatedAtDesc();
 
-    long countByOrderStatus(OrderStatus orderStatus);
+    long countByStatus(OrderStatus status);
 
-    long countByPaymentStatus(PaymentStatus paymentStatus);
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status != 'CANCELLED'")
+    BigDecimal calculateTotalRevenue();
 
-    @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o WHERE o.paymentStatus = 'PAID'")
-    BigDecimal calculateTotalPaidSales();
+    @Query("SELECT o FROM Order o WHERE o.restaurant.id = :restaurantId ORDER BY o.createdAt DESC")
+    List<Order> findByRestaurantId(@Param("restaurantId") Long restaurantId);
 }

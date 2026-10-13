@@ -6,19 +6,22 @@ import java.util.List;
 
 public class DashboardStatsDTO {
 
-    private long totalProducts;
+    private long totalRestaurants;
+    private long totalDishes;
     private long totalUsers;
     private long totalOrders;
     private BigDecimal totalRevenue = BigDecimal.ZERO;
     private long pendingOrders;
-    private long lowStockCount;
     private long activeSubscribers;
     private List<OrderResponseDTO> recentOrders = new ArrayList<>();
 
     public DashboardStatsDTO() {}
 
-    public long getTotalProducts() { return totalProducts; }
-    public void setTotalProducts(long totalProducts) { this.totalProducts = totalProducts; }
+    public long getTotalRestaurants() { return totalRestaurants; }
+    public void setTotalRestaurants(long totalRestaurants) { this.totalRestaurants = totalRestaurants; }
+
+    public long getTotalDishes() { return totalDishes; }
+    public void setTotalDishes(long totalDishes) { this.totalDishes = totalDishes; }
 
     public long getTotalUsers() { return totalUsers; }
     public void setTotalUsers(long totalUsers) { this.totalUsers = totalUsers; }
@@ -31,9 +34,6 @@ public class DashboardStatsDTO {
 
     public long getPendingOrders() { return pendingOrders; }
     public void setPendingOrders(long pendingOrders) { this.pendingOrders = pendingOrders; }
-
-    public long getLowStockCount() { return lowStockCount; }
-    public void setLowStockCount(long lowStockCount) { this.lowStockCount = lowStockCount; }
 
     public long getActiveSubscribers() { return activeSubscribers; }
     public void setActiveSubscribers(long activeSubscribers) { this.activeSubscribers = activeSubscribers; }

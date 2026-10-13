@@ -1,24 +1,42 @@
 import apiClient from './api';
-import { Address, ApiResponse, Order } from '../types';
+import { Order, OrderTracking } from '../types';
+
+export interface CreateOrderPayload {
+  restaurantId: number;
+  deliveryAddress: string;
+  deliveryInstructions?: string;
+  paymentMethod: 'CASH_ON_DELIVERY' | 'RAZORPAY_TEST' | 'UPI';
+}
 
 export const orderService = {
-  async createOrder(addressId: number, paymentMethod = 'CASH_ON_DELIVERY'): Promise<Order> {
-    const res = await apiClient.post<ApiResponse<Order>>('/api/orders', { addressId, paymentMethod });
-    return res.data.data;
+  async createOrder(payload: CreateOrderPayload): Promise<Order> {
+    const res = await apiClient.post<Order>('/api/orders', payload);
+    return res.data;
   },
 
-  async getUserOrders(): Promise<Order[]> {
-    const res = await apiClient.get<ApiResponse<Order[]>>('/api/orders');
-    return res.data.data;
+  async getOrders(): Promise<Order[]> {
+    const res = await apiClient.get<Order[]>('/api/orders');
+    return res.data;
   },
 
-  async getOrderById(id: number): Promise<Order> {
-    const res = await apiClient.get<ApiResponse<Order>>(`/api/orders/${id}`);
-    return res.data.data;
+  async getOrderById(orderId: number): Promise<Order> {
+    const res = await apiClient.get<Order>(`/api/orders/${orderId}`);
+    return res.data;
   },
 
-  async cancelOrder(id: number): Promise<Order> {
-    const res = await apiClient.post<ApiResponse<Order>>(`/api/orders/${id}/cancel`);
-    return res.data.data;
+  async cancelOrder(orderId: number): Promise<Order> {
+    const res = await apiClient.post<Order>(`/api/orders/${orderId}/cancel`);
+    return res.data;
   },
+
+  async getTracking(orderId: number): Promise<OrderTracking> {
+    const res = await apiClient.get<OrderTracking>(`/api/orders/${orderId}/tracking`);
+    return res.data;
+  },
+
+  // Internal simulated step transition for demo workflow
+  async simulateNextStep(orderId: number): Promise<OrderTracking> {
+    const res = await apiClient.post<OrderTracking>(`/api/orders/${orderId}/simulate-step`);
+    return res.data;
+  }
 };

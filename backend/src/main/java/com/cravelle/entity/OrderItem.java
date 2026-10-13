@@ -16,34 +16,30 @@ public class OrderItem {
     private Order order;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @JoinColumn(name = "dish_id")
+    private Dish dish;
 
-    @Column(name = "product_name", nullable = false, length = 200)
-    private String productName;
-
-    @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal unitPrice;
+    @Column(name = "dish_name", nullable = false, length = 150)
+    private String dishName;
 
     @Column(nullable = false)
     private Integer quantity;
 
-    @Column(name = "selected_size", nullable = false, length = 20)
-    private String selectedSize;
+    @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
+    private BigDecimal unitPrice;
 
-    @Column(name = "selected_color", nullable = false, length = 50)
-    private String selectedColor;
+    @Column(name = "total_price", nullable = false, precision = 10, scale = 2)
+    private BigDecimal totalPrice;
 
     public OrderItem() {}
 
-    public OrderItem(Order order, Product product, String productName, BigDecimal unitPrice, Integer quantity, String selectedSize, String selectedColor) {
+    public OrderItem(Order order, Dish dish, String dishName, Integer quantity, BigDecimal unitPrice, BigDecimal totalPrice) {
         this.order = order;
-        this.product = product;
-        this.productName = productName;
-        this.unitPrice = unitPrice;
+        this.dish = dish;
+        this.dishName = dishName;
         this.quantity = quantity;
-        this.selectedSize = selectedSize;
-        this.selectedColor = selectedColor;
+        this.unitPrice = unitPrice;
+        this.totalPrice = totalPrice;
     }
 
     public Long getId() { return id; }
@@ -52,21 +48,18 @@ public class OrderItem {
     public Order getOrder() { return order; }
     public void setOrder(Order order) { this.order = order; }
 
-    public Product getProduct() { return product; }
-    public void setProduct(Product product) { this.product = product; }
+    public Dish getDish() { return dish; }
+    public void setDish(Dish dish) { this.dish = dish; }
 
-    public String getProductName() { return productName; }
-    public void setProductName(String productName) { this.productName = productName; }
-
-    public BigDecimal getUnitPrice() { return unitPrice; }
-    public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
+    public String getDishName() { return dishName; }
+    public void setDishName(String dishName) { this.dishName = dishName; }
 
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
 
-    public String getSelectedSize() { return selectedSize; }
-    public void setSelectedSize(String selectedSize) { this.selectedSize = selectedSize; }
+    public BigDecimal getUnitPrice() { return unitPrice; }
+    public void setUnitPrice(BigDecimal unitPrice) { this.unitPrice = unitPrice; }
 
-    public String getSelectedColor() { return selectedColor; }
-    public void setSelectedColor(String selectedColor) { this.selectedColor = selectedColor; }
+    public BigDecimal getTotalPrice() { return totalPrice; }
+    public void setTotalPrice(BigDecimal totalPrice) { this.totalPrice = totalPrice; }
 }

@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class AddressService {
 
     private final AddressRepository addressRepository;
@@ -25,84 +26,64 @@ public class AddressService {
 
     @Transactional(readOnly = true)
     public List<AddressDTO> getUserAddresses(Long userId) {
-        return addressRepository.findByUserId(userId).stream()
-                .map(this::mapToDTO)
+        return addressRepository.findByUserIdOrderByIdDesc(userId).stream()
+                .map(AddressDTO::fromEntity)
                 .collect(Collectors.toList());
     }
 
-    @Transactional
     public AddressDTO createAddress(Long userId, AddressDTO dto) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
 
-        if (dto.isDefault()) {
-            addressRepository.findByUserIdAndIsDefaultTrue(userId)
-                    .ifPresent(existing -> {
-                        existing.setDefault(false);
-                        addressRepository.save(existing);
-                    });
+        if (Boolean.TRUE.equals(dto.getIsDefault())) {
+            addressRepository.findByUserIdAndIsDefaultTrue(userId).ifPresent(existing -> {
+                existing.setIsDefault(false);
+                addressRepository.save(existing);
+            });
         }
 
-        Address address = new Address(
-                user,
-                dto.getRecipientName(),
-                dto.getPhone(),
-                dto.getAddressLine(),
-                dto.getCity(),
-                dto.getState(),
-                dto.getPostalCode(),
-                dto.getCountry()
-        );
-        address.setDefault(dto.isDefault() || addressRepository.findByUserId(userId).isEmpty());
+        Address address = new Address();
+        address.setUser(user);
+        address.setLabel(dto.getLabel() != null ? dto.getLabel() : "Home");
+        address.setStreet(dto.getStreet());
+        address.setArea(dto.getArea() != null ? dto.getArea() : "Central");
+        address.setCity(dto.getCity() != null ? dto.getCity() : "Bangalore");
+        address.setPincode(dto.getPincode());
+        address.setLatitude(dto.getLatitude());
+        address.setLongitude(dto.getLongitude());
+        address.setIsDefault(Boolean.TRUE.equals(dto.getIsDefault()));
 
         Address saved = addressRepository.save(address);
-        return mapToDTO(saved);
+        return AddressDTO.fromEntity(saved);
     }
 
-    @Transactional
-    public AddressDTO updateAddress(Long userId, Long id, AddressDTO dto) {
-        Address address = addressRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Address not found"));
+    public AddressDTO updateAddress(Long userId, Long addressId, AddressDTO dto) {
+        Address address = addressRepository.findByIdAndUserId(addressId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Address not found with ID: " + addressId));
 
-        if (dto.isDefault() && !address.isDefault()) {
-            addressRepository.findByUserIdAndIsDefaultTrue(userId)
-                    .ifPresent(existing -> {
-                        existing.setDefault(false);
-                        addressRepository.save(existing);
-                    });
+        if (Boolean.TRUE.equals(dto.getIsDefault()) && !Boolean.TRUE.equals(address.getIsDefault())) {
+            addressRepository.findByUserIdAndIsDefaultTrue(userId).ifPresent(existing -> {
+                existing.setIsDefault(false);
+                addressRepository.save(existing);
+            });
         }
 
-        address.setRecipientName(dto.getRecipientName());
-        address.setPhone(dto.getPhone());
-        address.setAddressLine(dto.getAddressLine());
-        address.setCity(dto.getCity());
-        address.setState(dto.getState());
-        address.setPostalCode(dto.getPostalCode());
-        address.setCountry(dto.getCountry());
-        address.setDefault(dto.isDefault());
+        if (dto.getLabel() != null) address.setLabel(dto.getLabel());
+        if (dto.getStreet() != null) address.setStreet(dto.getStreet());
+        if (dto.getArea() != null) address.setArea(dto.getArea());
+        if (dto.getCity() != null) address.setCity(dto.getCity());
+        if (dto.getPincode() != null) address.setPincode(dto.getPincode());
+        if (dto.getLatitude() != null) address.setLatitude(dto.getLatitude());
+        if (dto.getLongitude() != null) address.setLongitude(dto.getLongitude());
+        if (dto.getIsDefault() != null) address.setIsDefault(dto.getIsDefault());
 
-        Address updated = addressRepository.save(address);
-        return mapToDTO(updated);
+        Address saved = addressRepository.save(address);
+        return AddressDTO.fromEntity(saved);
     }
 
-    @Transactional
-    public void deleteAddress(Long userId, Long id) {
-        Address address = addressRepository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Address not found"));
+    public void deleteAddress(Long userId, Long addressId) {
+        Address address = addressRepository.findByIdAndUserId(addressId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Address not found with ID: " + addressId));
         addressRepository.delete(address);
-    }
-
-    public AddressDTO mapToDTO(Address address) {
-        AddressDTO dto = new AddressDTO();
-        dto.setId(address.getId());
-        dto.setRecipientName(address.getRecipientName());
-        dto.setPhone(address.getPhone());
-        dto.setAddressLine(address.getAddressLine());
-        dto.setCity(address.getCity());
-        dto.setState(address.getState());
-        dto.setPostalCode(address.getPostalCode());
-        dto.setCountry(address.getCountry());
-        dto.setDefault(address.isDefault());
-        return dto;
     }
 }

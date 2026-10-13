@@ -63,9 +63,15 @@ public class SecurityConfig {
                 // Public Auth Endpoints
                 .requestMatchers("/api/auth/**").permitAll()
 
-                // Public Catalog & Review viewing
-                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
+                // Public Food Catalog, Locations & Recommendations
+                .requestMatchers(HttpMethod.GET, "/api/restaurants/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/cuisines/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/dishes/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/locations/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/recommendations/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/recommendations/ask").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/orders/*/tracking").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/orders/*/simulate-step").permitAll()
 
                 // Public Chatbot query (Supports guests)
                 .requestMatchers(HttpMethod.POST, "/api/chat").permitAll()

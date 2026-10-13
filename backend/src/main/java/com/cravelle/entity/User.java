@@ -17,17 +17,23 @@ public class User {
     @Column(nullable = false, unique = true, length = 150)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
+    @Column(nullable = false)
+    private String password;
+
+    @Column(length = 30)
+    private String phone;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private Role role = Role.CUSTOMER;
+    @Column(nullable = false, length = 30)
+    private Role role = Role.ROLE_CUSTOMER;
 
-    @Column(nullable = false)
-    private boolean enabled = true;
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
 
-    @Column(name = "created_at", updatable = false)
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private UserPreference preference;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @Column(name = "updated_at")
@@ -35,25 +41,22 @@ public class User {
 
     public User() {}
 
-    public User(String name, String email, String passwordHash, Role role) {
+    public User(String name, String email, String password, Role role) {
         this.name = name;
         this.email = email;
-        this.passwordHash = passwordHash;
-        this.role = role != null ? role : Role.CUSTOMER;
-        this.enabled = true;
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        this.password = password;
+        this.role = role;
     }
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
-        if (updatedAt == null) updatedAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     public Long getId() { return id; }
@@ -65,14 +68,20 @@ public class User {
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
-    public String getPasswordHash() { return passwordHash; }
-    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
 
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
 
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+
+    public UserPreference getPreference() { return preference; }
+    public void setPreference(UserPreference preference) { this.preference = preference; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

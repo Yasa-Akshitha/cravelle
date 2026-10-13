@@ -43,7 +43,7 @@ public class AuthService {
                 request.getName().trim(),
                 request.getEmail().trim().toLowerCase(),
                 passwordEncoder.encode(request.getPassword()),
-                Role.CUSTOMER
+                Role.ROLE_CUSTOMER
         );
 
         User savedUser = userRepository.save(user);
@@ -117,11 +117,11 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
             throw new BadRequestException("Current password does not match");
         }
 
-        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
     }
 }

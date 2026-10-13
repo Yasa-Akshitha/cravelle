@@ -14,10 +14,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAF8F5]">
+      <div className="min-h-screen flex items-center justify-center bg-cream-50">
         <div className="flex flex-col items-center space-y-3">
-          <Loader2 className="w-8 h-8 animate-spin text-gold-600" />
-          <p className="font-editorial text-sm text-charcoal-500">Entering Cravelle Salon...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-cravelle-500" />
+          <p className="font-display text-sm text-charcoal-500 font-semibold">
+            Connecting to Cravelle Kitchens...
+          </p>
         </div>
       </div>
     );

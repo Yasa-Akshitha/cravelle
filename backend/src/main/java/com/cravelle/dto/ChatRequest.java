@@ -2,6 +2,7 @@ package com.cravelle.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 
 public class ChatRequest {
 
@@ -11,6 +12,9 @@ public class ChatRequest {
 
     private String guestSessionId;
     private Long conversationId;
+    private Double latitude;
+    private Double longitude;
+    private BigDecimal budget;
 
     public ChatRequest() {}
 
@@ -27,4 +31,13 @@ public class ChatRequest {
 
     public Long getConversationId() { return conversationId; }
     public void setConversationId(Long conversationId) { this.conversationId = conversationId; }
+
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
+
+    public BigDecimal getBudget() { return budget; }
+    public void setBudget(BigDecimal budget) { this.budget = budget; }
 }

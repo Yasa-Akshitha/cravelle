@@ -1,23 +1,24 @@
 import apiClient from './api';
-import { ApiResponse, ChatMessage, ChatResponse } from '../types';
+import { ChatResponse } from '../types';
 
 export const chatService = {
-  async sendMessage(message: string, guestSessionId?: string): Promise<ChatResponse> {
-    const res = await apiClient.post<ApiResponse<ChatResponse>>('/api/chat', {
+  async sendMessage(message: string, conversationId?: number, userCoordinates?: { lat: number; lon: number }): Promise<ChatResponse> {
+    const res = await apiClient.post<ChatResponse>('/api/chat', {
       message,
-      guestSessionId,
+      conversationId,
+      latitude: userCoordinates?.lat,
+      longitude: userCoordinates?.lon
     });
-    return res.data.data;
+    return res.data;
   },
 
-  async getHistory(guestSessionId?: string): Promise<{ conversationId: number; messages: ChatMessage[] }> {
-    const params = guestSessionId ? { guestSessionId } : {};
-    const res = await apiClient.get<ApiResponse<{ conversationId: number; messages: ChatMessage[] }>>('/api/chat/history', { params });
-    return res.data.data;
+  async getConversations(): Promise<any[]> {
+    const res = await apiClient.get<any[]>('/api/chat/conversations');
+    return res.data;
   },
 
-  async clearHistory(guestSessionId?: string): Promise<void> {
-    const params = guestSessionId ? { guestSessionId } : {};
-    await apiClient.delete('/api/chat/history', { params });
-  },
+  async getConversationById(id: number): Promise<any> {
+    const res = await apiClient.get<any>(`/api/chat/conversations/${id}`);
+    return res.data;
+  }
 };

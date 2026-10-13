@@ -1,13 +1,13 @@
 package com.cravelle.service;
 
 import com.cravelle.dto.CreateReviewRequest;
-import com.cravelle.dto.ReviewResponseDTO;
-import com.cravelle.entity.Product;
-import com.cravelle.entity.Review;
+import com.cravelle.dto.RestaurantReviewDTO;
+import com.cravelle.entity.Restaurant;
+import com.cravelle.entity.RestaurantReview;
 import com.cravelle.entity.User;
 import com.cravelle.exception.ResourceNotFoundException;
-import com.cravelle.repository.ProductRepository;
-import com.cravelle.repository.ReviewRepository;
+import com.cravelle.repository.RestaurantRepository;
+import com.cravelle.repository.RestaurantReviewRepository;
 import com.cravelle.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,59 +16,47 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class ReviewService {
 
-    private final ReviewRepository reviewRepository;
-    private final ProductRepository productRepository;
+    private final RestaurantReviewRepository reviewRepository;
+    private final RestaurantRepository restaurantRepository;
     private final UserRepository userRepository;
 
-    public ReviewService(
-            ReviewRepository reviewRepository,
-            ProductRepository productRepository,
-            UserRepository userRepository) {
+    public ReviewService(RestaurantReviewRepository reviewRepository,
+                         RestaurantRepository restaurantRepository,
+                         UserRepository userRepository) {
         this.reviewRepository = reviewRepository;
-        this.productRepository = productRepository;
+        this.restaurantRepository = restaurantRepository;
         this.userRepository = userRepository;
     }
 
     @Transactional(readOnly = true)
-    public List<ReviewResponseDTO> getProductReviews(Long productId) {
-        return reviewRepository.findByProductIdOrderByCreatedAtDesc(productId).stream()
-                .map(this::mapToDTO)
+    public List<RestaurantReviewDTO> getRestaurantReviews(Long restaurantId) {
+        return reviewRepository.findByRestaurantIdOrderByCreatedAtDesc(restaurantId).stream()
+                .map(RestaurantReviewDTO::fromEntity)
                 .collect(Collectors.toList());
     }
 
-    @Transactional
-    public ReviewResponseDTO addReview(Long userId, Long productId, CreateReviewRequest request) {
+    public RestaurantReviewDTO addReview(Long userId, Long restaurantId, CreateReviewRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found with ID: " + restaurantId));
 
-        Review review = new Review(user, product, request.getRating(), request.getComment());
-        Review saved = reviewRepository.save(review);
+        RestaurantReview review = new RestaurantReview();
+        review.setUser(user);
+        review.setRestaurant(restaurant);
+        review.setRating(request.getRating());
+        review.setComment(request.getComment());
 
-        return mapToDTO(saved);
-    }
+        RestaurantReview saved = reviewRepository.save(review);
 
-    @Transactional
-    public void deleteReview(Long reviewId) {
-        if (!reviewRepository.existsById(reviewId)) {
-            throw new ResourceNotFoundException("Review not found with id: " + reviewId);
-        }
-        reviewRepository.deleteById(reviewId);
-    }
+        // Update restaurant rating
+        restaurant.setTotalReviews(restaurant.getTotalReviews() != null ? restaurant.getTotalReviews() + 1 : 1);
+        restaurantRepository.save(restaurant);
 
-    private ReviewResponseDTO mapToDTO(Review review) {
-        ReviewResponseDTO dto = new ReviewResponseDTO();
-        dto.setId(review.getId());
-        dto.setProductId(review.getProduct().getId());
-        dto.setUserId(review.getUser().getId());
-        dto.setUserName(review.getUser().getName());
-        dto.setRating(review.getRating());
-        dto.setComment(review.getComment());
-        dto.setCreatedAt(review.getCreatedAt());
-        return dto;
+        return RestaurantReviewDTO.fromEntity(saved);
     }
 }

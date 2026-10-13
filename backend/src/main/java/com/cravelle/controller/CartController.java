@@ -1,6 +1,9 @@
 package com.cravelle.controller;
 
-import com.cravelle.dto.*;
+import com.cravelle.dto.AddToCartRequest;
+import com.cravelle.dto.ApiResponse;
+import com.cravelle.dto.CartResponseDTO;
+import com.cravelle.dto.UpdateCartItemRequest;
 import com.cravelle.security.UserPrincipal;
 import com.cravelle.service.CartService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/cart")
-@Tag(name = "Cart", description = "Shopping cart management and persistence")
+@Tag(name = "Cart", description = "Shopping bag operations with verified pricing")
 public class CartController {
 
     private final CartService cartService;
@@ -22,44 +25,61 @@ public class CartController {
     }
 
     @GetMapping
-    @Operation(summary = "Get user shopping cart with verified subtotals")
-    public ResponseEntity<ApiResponse<CartResponseDTO>> getCart(@AuthenticationPrincipal UserPrincipal userPrincipal) {
-        CartResponseDTO cart = cartService.getCart(userPrincipal.getId());
+    @Operation(summary = "Get user cart contents and totals")
+    public ResponseEntity<ApiResponse<CartResponseDTO>> getCart(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId) {
+
+        Long userId = userPrincipal != null ? userPrincipal.getId() : null;
+        CartResponseDTO cart = cartService.getCart(userId, sessionId);
         return ResponseEntity.ok(ApiResponse.ok(cart));
     }
 
     @PostMapping("/items")
-    @Operation(summary = "Add product variant to cart")
-    public ResponseEntity<ApiResponse<CartResponseDTO>> addToCart(
+    @Operation(summary = "Add dish to bag")
+    public ResponseEntity<ApiResponse<CartResponseDTO>> addItem(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
             @Valid @RequestBody AddToCartRequest request) {
-        CartResponseDTO cart = cartService.addToCart(userPrincipal.getId(), request);
-        return ResponseEntity.ok(ApiResponse.ok("Item added to cart", cart));
+
+        Long userId = userPrincipal != null ? userPrincipal.getId() : null;
+        CartResponseDTO cart = cartService.addItem(userId, sessionId, request);
+        return ResponseEntity.ok(ApiResponse.ok("Item added to bag", cart));
     }
 
-    @PatchMapping("/items/{itemId}")
-    @Operation(summary = "Update quantity of cart item")
-    public ResponseEntity<ApiResponse<CartResponseDTO>> updateCartItem(
+    @PutMapping("/items/{id}")
+    @Operation(summary = "Update dish quantity in bag")
+    public ResponseEntity<ApiResponse<CartResponseDTO>> updateItem(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @PathVariable Long itemId,
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
+            @PathVariable Long id,
             @Valid @RequestBody UpdateCartItemRequest request) {
-        CartResponseDTO cart = cartService.updateCartItem(userPrincipal.getId(), itemId, request);
-        return ResponseEntity.ok(ApiResponse.ok("Cart item updated", cart));
+
+        Long userId = userPrincipal != null ? userPrincipal.getId() : null;
+        CartResponseDTO cart = cartService.updateItem(userId, sessionId, id, request);
+        return ResponseEntity.ok(ApiResponse.ok("Quantity updated", cart));
     }
 
-    @DeleteMapping("/items/{itemId}")
-    @Operation(summary = "Remove item from cart")
-    public ResponseEntity<ApiResponse<CartResponseDTO>> removeCartItem(
+    @DeleteMapping("/items/{id}")
+    @Operation(summary = "Remove dish from bag")
+    public ResponseEntity<ApiResponse<CartResponseDTO>> removeItem(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @PathVariable Long itemId) {
-        CartResponseDTO cart = cartService.removeCartItem(userPrincipal.getId(), itemId);
-        return ResponseEntity.ok(ApiResponse.ok("Item removed from cart", cart));
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
+            @PathVariable Long id) {
+
+        Long userId = userPrincipal != null ? userPrincipal.getId() : null;
+        CartResponseDTO cart = cartService.removeItem(userId, sessionId, id);
+        return ResponseEntity.ok(ApiResponse.ok("Item removed from bag", cart));
     }
 
     @DeleteMapping
-    @Operation(summary = "Clear entire shopping cart")
-    public ResponseEntity<ApiResponse<String>> clearCart(@AuthenticationPrincipal UserPrincipal userPrincipal) {
-        cartService.clearCart(userPrincipal.getId());
-        return ResponseEntity.ok(ApiResponse.ok("Cart cleared", null));
+    @Operation(summary = "Clear all items from bag")
+    public ResponseEntity<ApiResponse<String>> clearCart(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId) {
+
+        Long userId = userPrincipal != null ? userPrincipal.getId() : null;
+        cartService.clearCart(userId, sessionId);
+        return ResponseEntity.ok(ApiResponse.ok("Bag cleared", null));
     }
 }

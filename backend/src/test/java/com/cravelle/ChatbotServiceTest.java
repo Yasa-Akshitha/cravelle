@@ -2,11 +2,9 @@ package com.cravelle;
 
 import com.cravelle.chatbot.ChatbotService;
 import com.cravelle.chatbot.LlmClient;
-import com.cravelle.chatbot.StorePolicyService;
 import com.cravelle.dto.ChatRequest;
 import com.cravelle.dto.ChatResponseDTO;
-import com.cravelle.entity.ChatConversation;
-import com.cravelle.entity.Product;
+import com.cravelle.entity.*;
 import com.cravelle.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,80 +26,74 @@ import static org.mockito.Mockito.*;
 class ChatbotServiceTest {
 
     @Mock
-    private ProductRepository productRepository;
+    private LlmClient llmClient;
+
+    @Mock
+    private RestaurantRepository restaurantRepository;
+
+    @Mock
+    private DishRepository dishRepository;
+
+    @Mock
+    private SavedPlaceRepository savedPlaceRepository;
+
+    @Mock
+    private UserPreferenceRepository userPreferenceRepository;
 
     @Mock
     private OrderRepository orderRepository;
 
     @Mock
-    private ChatConversationRepository chatConversationRepository;
+    private ChatConversationRepository conversationRepository;
 
     @Mock
-    private ChatMessageRepository chatMessageRepository;
-
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
-    private StorePolicyService storePolicyService;
-
-    @Mock
-    private LlmClient llmClient;
+    private ChatMessageRepository messageRepository;
 
     @InjectMocks
     private ChatbotService chatbotService;
 
+    private Restaurant sampleRestaurant;
+    private Dish sampleDish;
     private ChatConversation sampleConversation;
 
     @BeforeEach
     void setUp() {
+        sampleRestaurant = new Restaurant();
+        sampleRestaurant.setId(1L);
+        sampleRestaurant.setName("Meghana Foods");
+        sampleRestaurant.setLatitude(12.9352);
+        sampleRestaurant.setLongitude(77.6245);
+        sampleRestaurant.setIsOpen(true);
+        sampleRestaurant.setDeliveryTimeMinutes(25);
+
+        sampleDish = new Dish();
+        sampleDish.setId(10L);
+        sampleDish.setName("Chicken Dum Biryani");
+        sampleDish.setRestaurant(sampleRestaurant);
+        sampleDish.setPrice(BigDecimal.valueOf(310.00));
+        sampleDish.setIsVeg(false);
+        sampleDish.setIsAvailable(true);
+        sampleDish.setRating(BigDecimal.valueOf(4.8));
+
         sampleConversation = new ChatConversation(null, "guest-123");
-        sampleConversation.setId(5L);
+        sampleConversation.setId(1L);
     }
 
     @Test
-    void testChatbotPolicyInquiryResponse() {
-        ChatRequest request = new ChatRequest("What is your return policy?", "guest-123");
+    void testChatbotFoodRecommendation() {
+        ChatRequest request = new ChatRequest("Recommend the best biryani near Koramangala", "guest-123");
 
-        when(chatConversationRepository.findTopByGuestSessionIdOrderByUpdatedAtDesc("guest-123"))
-                .thenReturn(Optional.of(sampleConversation));
-        when(chatMessageRepository.findByConversationIdOrderByCreatedAtAsc(5L))
-                .thenReturn(Collections.emptyList());
-        when(productRepository.findAll()).thenReturn(Collections.emptyList());
-        when(storePolicyService.getStorePoliciesSummary()).thenReturn("Complimentary 14-day returns.");
-        when(llmClient.generateCompletion(any(), any(), any()))
-                .thenReturn("At Cravelle, we offer a complimentary 14-day return and exchange policy for unworn items.");
+        when(conversationRepository.save(any(ChatConversation.class))).thenReturn(sampleConversation);
+        when(restaurantRepository.findAll()).thenReturn(List.of(sampleRestaurant));
+        when(dishRepository.findAll()).thenReturn(List.of(sampleDish));
+        when(llmClient.isConfigured()).thenReturn(false);
 
-        ChatResponseDTO response = chatbotService.processChat(null, request);
+        ChatResponseDTO response = chatbotService.processChat(request, null);
 
         assertNotNull(response);
-        assertTrue(response.getReply().contains("14-day return"));
-        assertEquals(5L, response.getConversationId());
-        assertFalse(response.getSuggestedQuestions().isEmpty());
-    }
-
-    @Test
-    void testChatbotValidatesProductIdsAgainstDatabase() {
-        ChatRequest request = new ChatRequest("Recommend a silk dress", "guest-123");
-
-        Product realProduct = new Product(null, "Aurelia Silk Slip Dress", "aurelia-silk-slip-dress", "Multiberry silk", new BigDecimal("2899.00"), null, "img.jpg");
-        realProduct.setId(1L);
-
-        when(chatConversationRepository.findTopByGuestSessionIdOrderByUpdatedAtDesc("guest-123"))
-                .thenReturn(Optional.of(sampleConversation));
-        when(chatMessageRepository.findByConversationIdOrderByCreatedAtAsc(5L))
-                .thenReturn(Collections.emptyList());
-        when(productRepository.findAll()).thenReturn(Collections.singletonList(realProduct));
-        when(storePolicyService.getStorePoliciesSummary()).thenReturn("Store Policies");
-        when(llmClient.generateCompletion(any(), any(), any()))
-                .thenReturn("I recommend the Aurelia Silk Slip Dress [ID: 1] which is gorgeous!");
-        when(productRepository.findById(1L)).thenReturn(Optional.of(realProduct));
-
-        ChatResponseDTO response = chatbotService.processChat(null, request);
-
-        assertNotNull(response);
-        assertEquals(1, response.getProducts().size());
-        assertEquals("Aurelia Silk Slip Dress", response.getProducts().get(0).getName());
-        assertEquals(1L, response.getProducts().get(0).getId());
+        assertNotNull(response.getReply());
+        assertTrue(response.getReply().contains("Meghana Foods") || response.getReply().contains("Cravelle AI"));
+        assertFalse(response.getDishes().isEmpty());
+        assertEquals("Chicken Dum Biryani", response.getDishes().get(0).getName());
     }
 }

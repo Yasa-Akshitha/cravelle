@@ -48,7 +48,7 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        sampleUser = new User("Test Customer", "test@example.com", "encodedPassword", Role.CUSTOMER);
+        sampleUser = new User("Test Customer", "test@example.com", "encodedPassword", Role.ROLE_CUSTOMER);
         sampleUser.setId(10L);
     }
 

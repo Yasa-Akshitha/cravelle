@@ -27,14 +27,18 @@ public class UserPrincipal implements UserDetails {
     }
 
     public static UserPrincipal create(User user) {
-        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole().name());
+        String roleName = user.getRole().name();
+        if (!roleName.startsWith("ROLE_")) {
+            roleName = "ROLE_" + roleName;
+        }
+        SimpleGrantedAuthority authority = new SimpleGrantedAuthority(roleName);
         return new UserPrincipal(
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
-                user.getPasswordHash(),
+                user.getPassword(),
                 Collections.singletonList(authority),
-                user.isEnabled()
+                true
         );
     }
 
