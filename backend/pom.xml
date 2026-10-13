@@ -12,7 +12,7 @@
     <artifactId>cravelle-backend</artifactId>
     <version>1.0.0</version>
     <name>cravelle-backend</name>
-    <description>Cravelle Luxury Fashion E-Commerce Backend</description>
+    <description>Cravelle AI-Powered Food Discovery &amp; Delivery Platform Backend</description>
 
     <properties>
         <java.version>17</java.version>
