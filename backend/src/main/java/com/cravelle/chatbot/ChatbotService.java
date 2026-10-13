@@ -216,10 +216,11 @@ public class ChatbotService {
 
         sb.append("Here are handpicked delicacies verified from our local restaurant partners:\n\n");
         for (DishRecommendationCardDTO card : cards) {
+            double priceVal = card.getPrice() != null ? card.getPrice().doubleValue() : 0.0;
             sb.append(String.format("• **%s** from *%s* — **₹%.2f** (%s, ~%d mins)\n  *%s*\n\n",
                     card.getName(),
                     card.getRestaurantName(),
-                    card.getPrice(),
+                    priceVal,
                     Boolean.TRUE.equals(card.getIsVeg()) ? "🌱 Pure Veg" : "🍗 Non-Veg",
                     card.getDeliveryTimeMinutes() != null ? card.getDeliveryTimeMinutes() : 25,
                     card.getRationale()));
