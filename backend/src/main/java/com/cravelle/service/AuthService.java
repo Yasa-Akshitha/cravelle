@@ -45,6 +45,9 @@ public class AuthService {
                 passwordEncoder.encode(request.getPassword()),
                 Role.ROLE_CUSTOMER
         );
+        if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
+            user.setPhone(request.getPhone().trim());
+        }
 
         User savedUser = userRepository.save(user);
 

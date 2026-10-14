@@ -28,9 +28,9 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleQuickFill = (demoEmail: string) => {
+  const handleQuickFill = (demoEmail: string, demoPassword = 'Cravelle123!') => {
     setEmail(demoEmail);
-    setPassword('Cravelle123!');
+    setPassword(demoPassword);
   };
 
   return (
@@ -117,22 +117,30 @@ export const LoginPage: React.FC = () => {
           <p className="text-[10px] text-center uppercase tracking-wider text-charcoal-400 font-bold">
             1-Click Demo Accounts (Password: Cravelle123!)
           </p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => handleQuickFill('yasaakshithareddy@gmail.com', 'akshitha2268')}
+              className="p-2 border border-cravelle-300 hover:border-cravelle-500 rounded-xl text-[10px] font-bold text-cravelle-700 bg-cream-50 hover:bg-cream-100 flex flex-col items-center justify-center space-y-1 transition-colors text-center"
+            >
+              <User className="w-3.5 h-3.5 text-cravelle-600" />
+              <span>Akshitha</span>
+            </button>
             <button
               type="button"
               onClick={() => handleQuickFill('rahul@example.com')}
-              className="p-2.5 border border-charcoal-200 hover:border-cravelle-500 rounded-xl text-[11px] font-bold text-charcoal-700 hover:bg-cream-50 flex items-center justify-center space-x-1.5 transition-colors"
+              className="p-2 border border-charcoal-200 hover:border-cravelle-500 rounded-xl text-[10px] font-bold text-charcoal-700 hover:bg-cream-50 flex flex-col items-center justify-center space-y-1 transition-colors text-center"
             >
               <User className="w-3.5 h-3.5 text-cravelle-500" />
-              <span>Rahul (PES Student)</span>
+              <span>Rahul (PES)</span>
             </button>
             <button
               type="button"
               onClick={() => handleQuickFill('admin@cravelle.com')}
-              className="p-2.5 border border-charcoal-200 hover:border-cravelle-500 rounded-xl text-[11px] font-bold text-charcoal-700 hover:bg-cream-50 flex items-center justify-center space-x-1.5 transition-colors"
+              className="p-2 border border-charcoal-200 hover:border-cravelle-500 rounded-xl text-[10px] font-bold text-charcoal-700 hover:bg-cream-50 flex flex-col items-center justify-center space-y-1 transition-colors text-center"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-cravelle-600" />
-              <span>Administrator</span>
+              <span>Admin</span>
             </button>
           </div>
         </div>

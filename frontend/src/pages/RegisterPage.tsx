@@ -53,8 +53,15 @@ export const RegisterPage: React.FC = () => {
         </div>
 
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl text-center">
-            {error}
+          <div className="p-3.5 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl space-y-1.5 text-center">
+            <p className="font-semibold">{error}</p>
+            {error.toLowerCase().includes('already registered') && (
+              <p>
+                <Link to="/login" className="font-bold underline text-cravelle-700 hover:text-cravelle-900 inline-block mt-1">
+                  Click here to Sign In with your password &rarr;
+                </Link>
+              </p>
+            )}
           </div>
         )}
 

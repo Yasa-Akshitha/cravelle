@@ -6,6 +6,7 @@ export interface CreateOrderPayload {
   deliveryAddress: string;
   deliveryInstructions?: string;
   paymentMethod: 'CASH_ON_DELIVERY' | 'RAZORPAY_TEST' | 'UPI';
+  items?: Array<{ dishId: number; quantity: number; unitPrice: number }>;
 }
 
 export const orderService = {

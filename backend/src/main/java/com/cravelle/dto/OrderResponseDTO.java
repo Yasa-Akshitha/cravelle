@@ -37,6 +37,32 @@ public class OrderResponseDTO {
 
     public OrderResponseDTO() {}
 
+    public OrderResponseDTO(Order order) {
+        OrderResponseDTO dto = fromEntity(order);
+        this.id = dto.id;
+        this.orderNumber = dto.orderNumber;
+        this.userId = dto.userId;
+        this.userName = dto.userName;
+        this.restaurantId = dto.restaurantId;
+        this.restaurantName = dto.restaurantName;
+        this.restaurantAddress = dto.restaurantAddress;
+        this.totalAmount = dto.totalAmount;
+        this.subtotal = dto.subtotal;
+        this.deliveryFee = dto.deliveryFee;
+        this.tax = dto.tax;
+        this.discount = dto.discount;
+        this.status = dto.status;
+        this.paymentMethod = dto.paymentMethod;
+        this.paymentStatus = dto.paymentStatus;
+        this.deliveryAddress = dto.deliveryAddress;
+        this.deliveryInstructions = dto.deliveryInstructions;
+        this.riderName = dto.riderName;
+        this.riderPhone = dto.riderPhone;
+        this.items = dto.items;
+        this.createdAt = dto.createdAt;
+        this.updatedAt = dto.updatedAt;
+    }
+
     public static OrderResponseDTO fromEntity(Order order) {
         OrderResponseDTO dto = new OrderResponseDTO();
         dto.setId(order.getId());

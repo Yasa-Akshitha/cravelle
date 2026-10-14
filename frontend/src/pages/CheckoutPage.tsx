@@ -70,6 +70,11 @@ export const CheckoutPage: React.FC = () => {
         deliveryAddress: deliveryAddress.trim(),
         deliveryInstructions: instructions.trim() || undefined,
         paymentMethod,
+        items: cart.items.map((item) => ({
+          dishId: item.dishId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        })),
       });
 
       // Clear local cart
