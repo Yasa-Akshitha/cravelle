@@ -71,7 +71,7 @@ public class LocationController {
         return ResponseEntity.ok(ApiResponse.ok(filtered));
     }
 
-    @GetMapping("/places/saved")
+    @GetMapping({"/places", "/places/saved"})
     @Operation(summary = "Get user's saved colleges, offices, malls, and places")
     public ResponseEntity<ApiResponse<List<SavedPlaceDTO>>> getSavedPlaces(
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
@@ -79,7 +79,7 @@ public class LocationController {
         return ResponseEntity.ok(ApiResponse.ok(places));
     }
 
-    @PostMapping("/places/saved")
+    @PostMapping({"/places", "/places/saved"})
     @Operation(summary = "Save a new place (college, office, mall, etc.)")
     public ResponseEntity<ApiResponse<SavedPlaceDTO>> addSavedPlace(
             @AuthenticationPrincipal UserPrincipal userPrincipal,

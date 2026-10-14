@@ -27,7 +27,18 @@ export const RegisterPage: React.FC = () => {
       await register(name.trim(), email.trim(), password, phone.trim() || undefined);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error creating account. Email may already be in use.');
+      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        setError('Server is waking up (Render free tier cold start). Please wait a moment and submit again.');
+      } else if (err.response?.data?.validationErrors && typeof err.response.data.validationErrors === 'object') {
+        const valErrors = Object.values(err.response.data.validationErrors).join(', ');
+        setError(`Validation error: ${valErrors}`);
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (!err.response) {
+        setError('Cannot reach server. Please check your connection or wait for the server to wake up.');
+      } else {
+        setError('Error creating account. This email may already be registered.');
+      }
     } finally {
       setLoading(false);
     }
@@ -55,9 +66,13 @@ export const RegisterPage: React.FC = () => {
         {error && (
           <div className="p-3.5 bg-red-50 border border-red-200 text-red-800 text-xs rounded-xl space-y-1.5 text-center">
             <p className="font-semibold">{error}</p>
-            {error.toLowerCase().includes('already registered') && (
+            {(error.toLowerCase().includes('already registered') || error.toLowerCase().includes('already in use')) && (
               <p>
-                <Link to="/login" className="font-bold underline text-cravelle-700 hover:text-cravelle-900 inline-block mt-1">
+                <Link
+                  to="/login"
+                  state={{ email }}
+                  className="font-bold underline text-cravelle-700 hover:text-cravelle-900 inline-block mt-1"
+                >
                   Click here to Sign In with your password &rarr;
                 </Link>
               </p>

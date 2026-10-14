@@ -8,12 +8,14 @@
 INSERT INTO users (id, name, email, password, phone, role, avatar_url, created_at) VALUES
 (1, 'Cravelle Administrator', 'admin@cravelle.com', '$2a$10$w3a6e974e6c464c813a86uK5a96k1x.t1XhS0cWdYc6Y4zK4b2ZWy', '+91 98000 11111', 'ROLE_ADMIN', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80', CURRENT_TIMESTAMP),
 (2, 'Rahul Sharma (Student @ PES)', 'rahul@example.com', '$2a$10$w3a6e974e6c464c813a86uK5a96k1x.t1XhS0cWdYc6Y4zK4b2ZWy', '+91 98111 22222', 'ROLE_CUSTOMER', 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=300&q=80', CURRENT_TIMESTAMP),
-(3, 'Priya Nair (Techie @ Prestige Tech Park)', 'priya@example.com', '$2a$10$w3a6e974e6c464c813a86uK5a96k1x.t1XhS0cWdYc6Y4zK4b2ZWy', '+91 98222 33333', 'ROLE_CUSTOMER', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80', CURRENT_TIMESTAMP);
+(3, 'Priya Nair (Techie @ Prestige Tech Park)', 'priya@example.com', '$2a$10$w3a6e974e6c464c813a86uK5a96k1x.t1XhS0cWdYc6Y4zK4b2ZWy', '+91 98222 33333', 'ROLE_CUSTOMER', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80', CURRENT_TIMESTAMP),
+(4, 'Akshitha Reddy', 'yasaakshithareddy@gmail.com', '$2a$10$BVyEdwogWtBki51N23p9QO5N8ZN6VHq3H22G4HTUiU19wtBzXFIBO', '+91 98765 43210', 'ROLE_CUSTOMER', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80', CURRENT_TIMESTAMP);
 
 -- 2. User Preferences
 INSERT INTO user_preferences (id, user_id, is_pure_veg, dietary_restrictions, favorite_cuisines, budget_per_meal, spice_tolerance, created_at) VALUES
 (1, 2, FALSE, 'None', 'Biryani, North Indian, Burgers', 250.00, 'HIGH', CURRENT_TIMESTAMP),
-(2, 3, TRUE, 'Vegetarian, Nut Allergy', 'South Indian, Healthy Bowls, Italian', 400.00, 'MEDIUM', CURRENT_TIMESTAMP);
+(2, 3, TRUE, 'Vegetarian, Nut Allergy', 'South Indian, Healthy Bowls, Italian', 400.00, 'MEDIUM', CURRENT_TIMESTAMP),
+(3, 4, FALSE, 'None', 'Biryani, South Indian, Italian, Desserts', 500.00, 'MEDIUM', CURRENT_TIMESTAMP);
 
 -- 3. Saved Places
 INSERT INTO saved_places (id, user_id, name, place_type, address, latitude, longitude, created_at) VALUES
@@ -21,7 +23,9 @@ INSERT INTO saved_places (id, user_id, name, place_type, address, latitude, long
 (2, 2, 'Gopalan Arcade Mall', 'MALL', 'Mysore Road, RR Nagar, Bangalore', 12.9352, 77.5186, CURRENT_TIMESTAMP),
 (3, 3, 'Prestige Tech Cloud Office', 'OFFICE', 'Outer Ring Road, Marathahalli, Bangalore', 12.9432, 77.6961, CURRENT_TIMESTAMP),
 (4, 3, 'Phoenix Marketcity Mall', 'MALL', 'Whitefield Main Road, Mahadevapura, Bangalore', 12.9959, 77.6964, CURRENT_TIMESTAMP),
-(5, 3, 'Indiranagar 100ft Hub', 'NEIGHBOURHOOD', '100 Feet Road, HAL 2nd Stage, Bangalore', 12.9719, 77.6412, CURRENT_TIMESTAMP);
+(5, 3, 'Indiranagar 100ft Hub', 'NEIGHBOURHOOD', '100 Feet Road, HAL 2nd Stage, Bangalore', 12.9719, 77.6412, CURRENT_TIMESTAMP),
+(6, 4, 'Indiranagar 100ft Hub', 'NEIGHBOURHOOD', '100 Feet Road, HAL 2nd Stage, Bangalore', 12.9719, 77.6412, CURRENT_TIMESTAMP),
+(7, 4, 'Phoenix Marketcity Mall', 'MALL', 'Whitefield Main Road, Mahadevapura, Bangalore', 12.9959, 77.6964, CURRENT_TIMESTAMP);
 
 -- 4. User Visit History (Consented place check-ins)
 INSERT INTO user_visit_history (id, user_id, place_name, latitude, longitude, visited_at) VALUES

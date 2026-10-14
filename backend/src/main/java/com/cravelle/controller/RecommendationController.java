@@ -33,7 +33,7 @@ public class RecommendationController {
         this.userRepository = userRepository;
     }
 
-    @GetMapping("/nearby")
+    @GetMapping({"", "/nearby"})
     @Operation(summary = "Get recommendations based on current location and places visited")
     public ResponseEntity<ApiResponse<RecommendationResponse>> getRecommendations(
             @RequestParam(required = false, defaultValue = "12.9716") Double latitude,
